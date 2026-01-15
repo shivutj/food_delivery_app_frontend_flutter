@@ -1,13 +1,13 @@
+// lib/services/auth_service.dart - FIXED with your IP
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import '../config/api_config.dart';
 
 class AuthService {
-  // Change to 10.0.2.2:5000 for Android emulator
-  // static const String baseUrl = 'http://localhost:5000';
-  // static const String baseUrl = 'http://10.0.2.2:5000';
-  static const String baseUrl = 'http://10.0.2.2:5001';
+  final String baseUrl = ApiConfig.baseUrl;
+  
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {

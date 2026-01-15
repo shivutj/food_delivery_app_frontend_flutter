@@ -1,9 +1,11 @@
+// lib/screens/menu_screen.dart - FIXED cart navigation
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../models/menu.dart';
 import '../services/api_service.dart';
 import '../providers/cart_provider.dart';
+import 'cart_screen.dart'; // IMPORTANT: Direct import
 
 class MenuScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -57,7 +59,13 @@ class _MenuScreenState extends State<MenuScreen> {
                   IconButton(
                     icon: const Icon(Icons.shopping_cart),
                     onPressed: () {
-                      Navigator.pushNamed(context, '/cart');
+                      // FIXED: Direct navigation instead of named route
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
                     },
                   ),
                   if (cart.itemCount > 0)

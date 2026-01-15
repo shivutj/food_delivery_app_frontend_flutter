@@ -1,7 +1,8 @@
-// lib/screens/login_screen.dart - Updated with register link
+// lib/screens/login_screen.dart - Clean version without test credentials
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import 'admin_home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,14 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Pre-fill test credentials for easy testing
-    _emailController.text = 'test@example.com';
-    _passwordController.text = 'test123';
-  }
 
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -41,11 +34,24 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => HomeScreen(user: result['user'])),
-      );
+      final user = result['user'];
+      
+      // Navigate based on user role
+      if (user.role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminHomeScreen(user: user),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(user: user),
+          ),
+        );
+      }
     } else {
       _showMessage(result['message']);
     }
@@ -138,35 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '🧪 Test Credentials',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[900],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Email: test@example.com',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                    ),
-                    Text(
-                      'Password: test123',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
