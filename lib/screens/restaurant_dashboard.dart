@@ -1,37 +1,23 @@
-// lib/screens/admin_dashboard.dart - FIXED WITH ANALYTICS ACCESS
+// lib/screens/restaurant_dashboard.dart - NEW FILE FOR RESTAURANT OWNERS
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../models/user.dart';
+import '../services/auth_service.dart';
 import 'admin_orders_screen.dart';
 import 'admin_menu_screen.dart';
 import 'analytics_dashboard_screen.dart'; // ✅ Uses existing analytics
 import 'login_screen.dart';
 
-class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+class RestaurantDashboard extends StatefulWidget {
+  final User user;
+
+  const RestaurantDashboard({super.key, required this.user});
 
   @override
-  State<AdminDashboard> createState() => _AdminDashboardState();
+  State<RestaurantDashboard> createState() => _RestaurantDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _RestaurantDashboardState extends State<RestaurantDashboard> {
   final AuthService _authService = AuthService();
-  User? _currentUser;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final user = await _authService.getUserData();
-    setState(() {
-      _currentUser = user;
-      _isLoading = false;
-    });
-  }
 
   void _logout() {
     showDialog(
@@ -60,100 +46,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  void _showProfile() {
-    if (_currentUser == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Admin Profile'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person, color: Colors.blue),
-              title: const Text('Name'),
-              subtitle: Text(
-                _currentUser!.name,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.phone, color: Colors.green),
-              title: const Text('Phone'),
-              subtitle: Text(
-                _currentUser!.phone,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.email, color: Colors.orange),
-              title: const Text('Email'),
-              subtitle: Text(
-                _currentUser!.email,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const ListTile(
-              leading: Icon(Icons.admin_panel_settings, color: Colors.purple),
-              title: Text('Role'),
-              subtitle: Text(
-                'System Administrator',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _currentUser != null ? _currentUser!.name : 'Admin',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (_currentUser != null)
-              Text(
-                '📱 ${_currentUser!.phone}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.white70,
-                ),
-              ),
-          ],
-        ),
+        title: Text('${widget.user.name} - Restaurant'),
         actions: [
-          if (_currentUser != null)
-            IconButton(
-              icon: const Icon(Icons.account_circle),
-              onPressed: _showProfile,
-              tooltip: 'My Profile',
-            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
-            tooltip: 'Logout',
           ),
         ],
       ),
@@ -163,7 +64,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'System Administration',
+              'Restaurant Management',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -171,7 +72,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Manage all restaurants, orders, and system analytics',
+              'Manage your restaurant menu, orders, and analytics',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -184,11 +85,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
                 children: [
-                  // ✅ ANALYTICS CARD (TOP PRIORITY)
                   _buildDashboardCard(
                     icon: Icons.analytics,
                     title: 'Analytics',
-                    subtitle: 'View all system metrics',
+                    subtitle: 'View your restaurant stats',
                     color: Colors.blue,
                     onTap: () {
                       Navigator.push(
@@ -215,7 +115,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   _buildDashboardCard(
                     icon: Icons.shopping_bag,
-                    title: 'Manage Orders',
+                    title: 'Orders',
                     subtitle: 'View and update orders',
                     color: Colors.green,
                     onTap: () {

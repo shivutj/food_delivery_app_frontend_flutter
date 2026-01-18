@@ -1,7 +1,9 @@
+// lib/screens/login_screen.dart - FIXED WITH 3-ROLE SUPPORT
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'admin_dashboard.dart';
+import 'restaurant_dashboard.dart'; // NEW - Create this file
 import 'otp_verification_screen.dart';
 import '../models/user.dart';
 
@@ -25,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String _selectedRole = 'customer';
+  String _selectedRole = 'customer'; // ✅ DEFAULT: customer
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -54,57 +56,88 @@ class _LoginScreenState extends State<LoginScreen>
     _animationController.forward();
   }
 
-  // lib/screens/login_screen.dart - ADMIN LOGIN FIX
-// REPLACE the _submit() method with this version:
+  // ✅ FIXED: 3-ROLE ROUTING
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
 
-Future<void> _submit() async {
-  if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
-  setState(() => _isLoading = true);
+    if (_isLogin) {
+      // LOGIN
+      final result = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-  if (_isLogin) {
-    // LOGIN
-    final result = await _authService.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+      setState(() => _isLoading = false);
 
-    setState(() => _isLoading = false);
-
-    if (result['success']) {
-      final user = result['user'];
-      
-      // 🔍 DEBUG: Print user role
-      print('🔐 Login Success - User Role: ${user.role}');
-      print('🔐 User Email: ${user.email}');
-      print('🔐 User Name: ${user.name}');
-      
-      // ✅ FIXED: Check role and navigate accordingly
-      if (user.role == 'admin') {
-        print('✅ Navigating to Admin Dashboard');
+      if (result['success']) {
+        final user = result['user'];
         
-        // Make sure AdminDashboard is imported
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AdminDashboard()),
-        );
+        // ✅ DEBUG LOGGING
+        print('🔐 Login Success');
+        print('   User Role: ${user.role}');
+        print('   User Email: ${user.email}');
+        print('   User Name: ${user.name}');
+        
+        // ✅ FIXED: 3-ROLE ROUTING
+        if (!mounted) return;
+        
+        if (user.role == 'admin') {
+          print('✅ Navigating to Admin Dashboard');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminDashboard()),
+          );
+        } else if (user.role == 'restaurant') {
+          print('✅ Navigating to Restaurant Dashboard');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => RestaurantDashboard(user: user)),
+          );
+        } else {
+          print('✅ Navigating to Customer Home');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+          );
+        }
       } else {
-        print('✅ Navigating to Customer Home');
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
-        );
+        // Check if requires OTP
+        if (result['requiresOTP'] == true) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OTPVerificationScreen(
+                userId: result['userId'],
+                email: _emailController.text.trim(),
+              ),
+            ),
+          );
+        } else {
+          _showSnackBar(result['message'], Colors.red);
+        }
       }
     } else {
-      // Check if requires OTP
-      if (result['requiresOTP'] == true) {
+      // REGISTER
+      final result = await _authService.register(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text,
+        _phoneController.text.trim(),
+        _selectedRole,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (result['success']) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationScreen(
               userId: result['userId'],
               email: _emailController.text.trim(),
+              otp: result['otp'],
             ),
           ),
         );
@@ -112,36 +145,7 @@ Future<void> _submit() async {
         _showSnackBar(result['message'], Colors.red);
       }
     }
-  } else {
-    // REGISTER CODE (unchanged)
-    final result = await _authService.register(
-      _nameController.text.trim(),
-      _emailController.text.trim(),
-      _passwordController.text,
-      _phoneController.text.trim(),
-      _selectedRole,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (result['success']) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OTPVerificationScreen(
-            userId: result['userId'],
-            email: _emailController.text.trim(),
-            otp: result['otp'],
-          ),
-        ),
-      );
-    } else {
-      _showSnackBar(result['message'], Colors.red);
-    }
   }
-}
-
-
 
   void _showSnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -232,6 +236,41 @@ Future<void> _submit() async {
                               ),
                             ),
 
+                            // ✅ RESTORED: ROLE DROPDOWN (REGISTER ONLY)
+                            if (!_isLogin) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade400),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedRole,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    prefixIcon: Icon(Icons.person_outline),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'customer',
+                                      child: Text('User'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'restaurant',
+                                      child: Text('Restaurant Owner'),
+                                    ),
+                                    // ✅ NO ADMIN OPTION - Created manually only
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedRole = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+
                             const SizedBox(height: 24),
 
                             ElevatedButton(
@@ -245,6 +284,7 @@ Future<void> _submit() async {
                               onPressed: () {
                                 setState(() {
                                   _isLogin = !_isLogin;
+                                  _selectedRole = 'customer'; // Reset role
                                 });
                               },
                               child: Text(
