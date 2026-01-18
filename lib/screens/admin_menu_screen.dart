@@ -1,3 +1,4 @@
+// lib/screens/admin_menu_screen.dart - WITH VEG/NON-VEG FILTER
 import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
 import '../models/menu_item.dart';
@@ -17,6 +18,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
   List<MenuItem> _menuItems = [];
   bool _isLoading = true;
   String? _selectedRestaurantId;
+  
+  // ✅ NEW: Filter state
+  String _filterType = 'all'; // 'all', 'veg', 'non-veg'
 
   @override
   void initState() {
@@ -43,6 +47,15 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
     }
   }
 
+  // ✅ Filter menu items based on veg/non-veg
+  List<MenuItem> get _filteredMenuItems {
+    if (_filterType == 'all') return _menuItems;
+    if (_filterType == 'veg') {
+      return _menuItems.where((item) => item.isVeg).toList();
+    }
+    return _menuItems.where((item) => !item.isVeg).toList();
+  }
+
   Future<void> _deleteMenuItem(String menuId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -63,7 +76,16 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
     );
 
     if (confirm == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
       final success = await _apiService.deleteMenuItem(menuId);
+      
+      Navigator.pop(context);
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -75,7 +97,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to delete item'),
+            content: Text('Failed to delete item. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -83,7 +105,6 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
     }
   }
 
-  // 🔹 EMPTY MENU STATE UI
   Widget _buildEmptyMenuState() {
     return Center(
       child: Padding(
@@ -122,88 +143,39 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade700),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Quick Start Guide',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildGuideStep('1', 'Add food items with name, price & image'),
-                  _buildGuideStep('2', 'Set availability for each item'),
-                  _buildGuideStep('3', 'Start receiving orders from customers'),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGuideStep(String number, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundColor: Colors.blue.shade700,
-            child: Text(
-              number,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[800],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Menu'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark 
+                ? [Colors.grey.shade900, Colors.grey.shade800]
+                : [Colors.green.shade600, Colors.green.shade400],
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // Restaurant Selector
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: Colors.grey[100],
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
+                  ),
                   child: DropdownButtonFormField<String>(
                     value: _selectedRestaurantId,
                     decoration: const InputDecoration(
@@ -224,63 +196,167 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                     },
                   ),
                 ),
+
+                // ✅ Filter Chips
+                if (_menuItems.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey.shade800 : Colors.white,
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.filter_list, size: 20),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Filter:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildFilterChip('All', 'all', Icons.restaurant_menu),
+                                const SizedBox(width: 8),
+                                _buildFilterChip('Veg', 'veg', Icons.eco, Colors.green),
+                                const SizedBox(width: 8),
+                                _buildFilterChip('Non-Veg', 'non-veg', Icons.restaurant, Colors.red),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Menu Items List
                 Expanded(
-                  child: _menuItems.isEmpty
+                  child: _filteredMenuItems.isEmpty
                       ? _buildEmptyMenuState()
-                      : ListView.builder(
-                          itemCount: _menuItems.length,
-                          padding: const EdgeInsets.all(8),
-                          itemBuilder: (context, index) {
-                            final item = _menuItems[index];
-                            return Card(
-                              child: ListTile(
-                                leading: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    item.image,
-                                    width: 60,
-                                    height: 60,
-                                    fit: BoxFit.cover,
+                      : RefreshIndicator(
+                          onRefresh: _loadMenuItems,
+                          child: ListView.builder(
+                            itemCount: _filteredMenuItems.length,
+                            padding: const EdgeInsets.all(8),
+                            itemBuilder: (context, index) {
+                              final item = _filteredMenuItems[index];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: ListTile(
+                                  leading: Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          item.image,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              width: 60,
+                                              height: 60,
+                                              color: Colors.grey[300],
+                                              child: const Icon(Icons.fastfood),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      // ✅ Veg/Non-Veg Indicator
+                                      Positioned(
+                                        top: 2,
+                                        right: 2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: item.isVeg ? Colors.green : Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            item.isVeg ? Icons.circle : Icons.circle,
+                                            size: 8,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          item.name,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: item.isVeg 
+                                            ? Colors.green.shade50 
+                                            : Colors.red.shade50,
+                                          border: Border.all(
+                                            color: item.isVeg 
+                                              ? Colors.green.shade600 
+                                              : Colors.red.shade600,
+                                          ),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          item.isVeg ? 'VEG' : 'NON-VEG',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: item.isVeg 
+                                              ? Colors.green.shade700 
+                                              : Colors.red.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    '₹${item.price} • ${item.category}',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blue),
+                                        onPressed: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => AddEditMenuScreen(
+                                                menuItem: item,
+                                                restaurantId: _selectedRestaurantId!,
+                                              ),
+                                            ),
+                                          );
+                                          if (result == true) {
+                                            await _loadMenuItems();
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteMenuItem(item.id),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                title: Text(item.name),
-                                subtitle:
-                                    Text('₹${item.price} • ${item.category}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit,
-                                          color: Colors.blue),
-                                      onPressed: () async {
-                                        final result =
-                                            await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AddEditMenuScreen(
-                                              menuItem: item,
-                                              restaurantId:
-                                                  _selectedRestaurantId!,
-                                            ),
-                                          ),
-                                        );
-                                        if (result == true) {
-                                          await _loadMenuItems();
-                                        }
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () =>
-                                          _deleteMenuItem(item.id),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                 ),
               ],
@@ -302,8 +378,46 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Item'),
+              backgroundColor: Colors.green.shade600,
             )
           : null,
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, IconData icon, [Color? color]) {
+    final isSelected = _filterType == value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected 
+              ? Colors.white 
+              : (color ?? (isDark ? Colors.white70 : Colors.black87)),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : null,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _filterType = value;
+        });
+      },
+      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+      selectedColor: color ?? Theme.of(context).primaryColor,
+      checkmarkColor: Colors.white,
     );
   }
 }

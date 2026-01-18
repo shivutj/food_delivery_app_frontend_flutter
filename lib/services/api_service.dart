@@ -1,4 +1,4 @@
-// lib/services/api_service.dart - COMPLETE WORKING VERSION
+// lib/services/api_service.dart - FIXED DELETE METHOD
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -100,7 +100,12 @@ class ApiService {
         body: json.encode(menuItem.toJson()),
       );
 
-      return response.statusCode == 201;
+      if (response.statusCode == 201) {
+        return true;
+      } else {
+        print('Add menu item failed: ${response.statusCode} - ${response.body}');
+        return false;
+      }
     } catch (e) {
       print('Add menu error: $e');
       return false;
@@ -119,22 +124,44 @@ class ApiService {
         body: json.encode(menuItem.toJson()),
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Update menu item failed: ${response.statusCode} - ${response.body}');
+        return false;
+      }
     } catch (e) {
       print('Update menu error: $e');
       return false;
     }
   }
 
+  // ✅ FIXED: Delete menu item with correct endpoint
   Future<bool> deleteMenuItem(String menuId) async {
     try {
       final token = await _authService.getToken();
+      
+      print('🗑️ Deleting menu item: $menuId');
+      print('   Token: ${token?.substring(0, 20)}...');
+      print('   URL: $baseUrl/restaurants/menu/$menuId');
+      
       final response = await http.delete(
-        Uri.parse('$baseUrl/menu/$menuId'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse('$baseUrl/restaurants/menu/$menuId'), // ✅ CORRECT ENDPOINT
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
       );
 
-      return response.statusCode == 200;
+      print('   Response: ${response.statusCode}');
+      print('   Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Delete failed: ${response.statusCode} - ${response.body}');
+        return false;
+      }
     } catch (e) {
       print('Delete menu error: $e');
       return false;

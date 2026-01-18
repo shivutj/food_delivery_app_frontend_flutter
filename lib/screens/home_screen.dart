@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart - COMPLETE FIXED FILE
+// lib/screens/home_screen.dart - WITH THEME TOGGLE & GRADIENT
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,11 +8,12 @@ import '../models/restaurant.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../providers/cart_provider.dart';
+import '../providers/theme_provider.dart'; // ✅ Import
 import 'menu_screen.dart';
 import 'cart_screen.dart';
 import 'orders_screen.dart';
 import 'login_screen.dart';
-import 'profile_screen.dart'; // ✅ ADDED
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -84,80 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showUserProfile() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.green.shade100,
-              child: Text(
-                widget.user.name[0].toUpperCase(),
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.user.name,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.email, widget.user.email),
-            _buildInfoRow(Icons.phone, widget.user.phone),
-            _buildInfoRow(
-              Icons.badge,
-              widget.user.role == 'admin' ? 'Restaurant Owner' : 'Customer',
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -168,11 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.green.shade400, Colors.green.shade700],
-                  ),
+                  gradient: isDark 
+                    ? themeProvider.darkGradient 
+                    : themeProvider.lightGradient,
                 ),
                 child: SafeArea(
                   child: Padding(
@@ -204,7 +134,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             actions: [
-              // ✅ Cart Icon with Badge
+              // ✅ Theme Toggle
+              IconButton(
+                icon: Icon(
+                  isDark ? Icons.light_mode : Icons.dark_mode,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  themeProvider.toggleTheme();
+                },
+                tooltip: isDark ? 'Light Mode' : 'Dark Mode',
+              ),
+              
+              // Cart Icon
               Consumer<CartProvider>(
                 builder: (context, cart, child) {
                   return Stack(
@@ -247,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              
               // Orders History
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.white),
@@ -257,7 +200,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              // ✅ Profile Icon - Fixed Navigation
+              
+              // Profile
               IconButton(
                 icon: const Icon(Icons.account_circle, color: Colors.white),
                 onPressed: () {
@@ -267,6 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              
               // Logout
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.white),
@@ -284,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   hintText: 'Search restaurants...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
+                  fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -340,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: CachedNetworkImage(
-                imageUrl: restaurant.image,
+                imageUrl: restaurant.primaryImage,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,

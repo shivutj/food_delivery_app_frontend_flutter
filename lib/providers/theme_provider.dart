@@ -1,4 +1,4 @@
-// lib/providers/theme_provider.dart
+// lib/providers/theme_provider.dart - ENHANCED WITH GRADIENTS
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,13 +27,33 @@ class ThemeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Light Theme - Clean, modern colors
+  // ✅ Gradient Colors for Light Mode
+  LinearGradient get lightGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      const Color(0xFF4CAF50), // Green
+      const Color(0xFF66BB6A), // Light Green
+    ],
+  );
+
+  // ✅ Gradient Colors for Dark Mode
+  LinearGradient get darkGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      const Color(0xFF1E1E1E), // Dark Gray
+      const Color(0xFF2C2C2C), // Lighter Dark Gray
+    ],
+  );
+
+  // Light Theme
   ThemeData get lightTheme {
     return ThemeData(
       brightness: Brightness.light,
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF4CAF50), // Soft green
+        seedColor: const Color(0xFF4CAF50),
         brightness: Brightness.light,
         primary: const Color(0xFF4CAF50),
         secondary: const Color(0xFF66BB6A),
@@ -41,11 +61,12 @@ class ThemeProvider with ChangeNotifier {
         background: const Color(0xFFF5F5F5),
       ),
       scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-        backgroundColor: Color(0xFF4CAF50),
+        backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
+        // ✅ Gradient will be applied via flexibleSpace in widgets
       ),
       cardTheme: CardThemeData(
         elevation: 2,

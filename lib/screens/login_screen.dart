@@ -1,9 +1,11 @@
-// lib/screens/login_screen.dart - FIXED WITH 3-ROLE SUPPORT
+// lib/screens/login_screen.dart - WITH GRADIENT BACKGROUND
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../providers/theme_provider.dart';
 import 'home_screen.dart';
 import 'admin_dashboard.dart';
-import 'restaurant_dashboard.dart'; // NEW - Create this file
+import 'restaurant_dashboard.dart';
 import 'otp_verification_screen.dart';
 import '../models/user.dart';
 
@@ -27,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String _selectedRole = 'customer'; // ✅ DEFAULT: customer
+  String _selectedRole = 'customer';
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -56,14 +58,12 @@ class _LoginScreenState extends State<LoginScreen>
     _animationController.forward();
   }
 
-  // ✅ FIXED: 3-ROLE ROUTING
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     if (_isLogin) {
-      // LOGIN
       final result = await _authService.login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -74,36 +74,25 @@ class _LoginScreenState extends State<LoginScreen>
       if (result['success']) {
         final user = result['user'];
         
-        // ✅ DEBUG LOGGING
-        print('🔐 Login Success');
-        print('   User Role: ${user.role}');
-        print('   User Email: ${user.email}');
-        print('   User Name: ${user.name}');
-        
-        // ✅ FIXED: 3-ROLE ROUTING
         if (!mounted) return;
         
         if (user.role == 'admin') {
-          print('✅ Navigating to Admin Dashboard');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const AdminDashboard()),
           );
         } else if (user.role == 'restaurant') {
-          print('✅ Navigating to Restaurant Dashboard');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => RestaurantDashboard(user: user)),
           );
         } else {
-          print('✅ Navigating to Customer Home');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
           );
         }
       } else {
-        // Check if requires OTP
         if (result['requiresOTP'] == true) {
           Navigator.push(
             context,
@@ -119,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen>
         }
       }
     } else {
-      // REGISTER
       final result = await _authService.register(
         _nameController.text.trim(),
         _emailController.text.trim(),
@@ -159,148 +147,177 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green.shade400, Colors.green.shade700],
-          ),
+          gradient: isDark 
+            ? themeProvider.darkGradient 
+            : themeProvider.lightGradient,
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.restaurant_menu,
-                                size: 64, color: Colors.green.shade700),
-                            const SizedBox(height: 24),
+          child: Stack(
+            children: [
+              // Theme Toggle Button
+              Positioned(
+                top: 16,
+                right: 16,
+                child: IconButton(
+                  icon: Icon(
+                    isDark ? Icons.light_mode : Icons.dark_mode,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    themeProvider.toggleTheme();
+                  },
+                ),
+              ),
 
-                            Text(
-                              _isLogin ? 'Welcome Back' : 'Create Account',
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
+              // Main Content
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.restaurant_menu,
+                                    size: 64, color: Colors.green.shade700),
+                                const SizedBox(height: 24),
 
-                            if (!_isLogin)
-                              _field(_nameController, 'Name', Icons.person),
-
-                            _field(
-                              _emailController,
-                              'Email',
-                              Icons.email,
-                              type: TextInputType.emailAddress,
-                            ),
-
-                            if (!_isLogin)
-                              _field(
-                                _phoneController,
-                                'Phone',
-                                Icons.phone,
-                                type: TextInputType.phone,
-                                max: 10,
-                              ),
-
-                            _field(
-                              _passwordController,
-                              'Password',
-                              Icons.lock,
-                              obscure: _obscurePassword,
-                              suffix: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                            ),
-
-                            // ✅ RESTORED: ROLE DROPDOWN (REGISTER ONLY)
-                            if (!_isLogin) ...[
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade400),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedRole,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    prefixIcon: Icon(Icons.person_outline),
+                                Text(
+                                  _isLogin ? 'Welcome Back' : 'Create Account',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'customer',
-                                      child: Text('User'),
+                                ),
+                                const SizedBox(height: 24),
+
+                                if (!_isLogin)
+                                  _field(_nameController, 'Name', Icons.person),
+
+                                _field(
+                                  _emailController,
+                                  'Email',
+                                  Icons.email,
+                                  type: TextInputType.emailAddress,
+                                ),
+
+                                if (!_isLogin)
+                                  _field(
+                                    _phoneController,
+                                    'Phone',
+                                    Icons.phone,
+                                    type: TextInputType.phone,
+                                    max: 10,
+                                  ),
+
+                                _field(
+                                  _passwordController,
+                                  'Password',
+                                  Icons.lock,
+                                  obscure: _obscurePassword,
+                                  suffix: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
                                     ),
-                                    DropdownMenuItem(
-                                      value: 'restaurant',
-                                      child: Text('Restaurant Owner'),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
+                                ),
+
+                                if (!_isLogin) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey.shade400),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    // ✅ NO ADMIN OPTION - Created manually only
-                                  ],
-                                  onChanged: (value) {
+                                    child: DropdownButtonFormField<String>(
+                                      value: _selectedRole,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        prefixIcon: Icon(Icons.person_outline),
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'customer',
+                                          child: Text('Customer'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'restaurant',
+                                          child: Text('Restaurant Owner'),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedRole = value!;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+
+                                const SizedBox(height: 24),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading ? null : _submit,
+                                    child: _isLoading
+                                        ? const CircularProgressIndicator(color: Colors.white)
+                                        : Text(
+                                            _isLogin ? 'Login' : 'Register',
+                                            style: const TextStyle(fontSize: 16),
+                                          ),
+                                  ),
+                                ),
+
+                                TextButton(
+                                  onPressed: () {
                                     setState(() {
-                                      _selectedRole = value!;
+                                      _isLogin = !_isLogin;
+                                      _selectedRole = 'customer';
                                     });
                                   },
+                                  child: Text(
+                                    _isLogin
+                                        ? 'Create account'
+                                        : 'Already have account',
+                                  ),
                                 ),
-                              ),
-                            ],
-
-                            const SizedBox(height: 24),
-
-                            ElevatedButton(
-                              onPressed: _isLoading ? null : _submit,
-                              child: _isLoading
-                                  ? const CircularProgressIndicator()
-                                  : Text(_isLogin ? 'Login' : 'Register'),
+                              ],
                             ),
-
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isLogin = !_isLogin;
-                                  _selectedRole = 'customer'; // Reset role
-                                });
-                              },
-                              child: Text(
-                                _isLogin
-                                    ? 'Create account'
-                                    : 'Already have account',
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

@@ -1,4 +1,4 @@
-// lib/screens/add_edit_menu_screen.dart - COMPLETE FIXED FILE
+// lib/screens/add_edit_menu_screen.dart - WITH VEG/NON-VEG TOGGLE
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,6 +34,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
   File? _imageFile;
   bool _isLoading = false;
   bool _available = true;
+  bool _isVeg = true; // ✅ NEW: Veg/Non-Veg toggle
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
     );
     _imageUrl = widget.menuItem?.image;
     _available = widget.menuItem?.available ?? true;
+    _isVeg = widget.menuItem?.isVeg ?? true; // ✅ Load existing value
   }
 
   Future<void> _pickImage() async {
@@ -91,21 +93,20 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
         return;
       }
 
-      // ✅ FIX: Parse as int directly
       final priceValue = int.parse(_priceController.text.trim());
 
-     final menuItem = MenuItem(
-  id: widget.menuItem?.id ?? '',
-  restaurantId: widget.restaurantId,
-  name: _nameController.text.trim(),
-  price: priceValue, // ✅ INT ONLY
-  image: finalImageUrl,
-  category: _categoryController.text.trim(),
-  description: _descriptionController.text.trim(),
-  available: _available,
-  isVeg: widget.menuItem?.isVeg ?? true, // or from UI toggle
-  video: widget.menuItem?.video,
-);
+      final menuItem = MenuItem(
+        id: widget.menuItem?.id ?? '',
+        restaurantId: widget.restaurantId,
+        name: _nameController.text.trim(),
+        price: priceValue,
+        image: finalImageUrl,
+        category: _categoryController.text.trim(),
+        description: _descriptionController.text.trim(),
+        available: _available,
+        isVeg: _isVeg, // ✅ Save veg/non-veg status
+        video: widget.menuItem?.video,
+      );
 
       bool success;
       if (widget.menuItem == null) {
@@ -136,10 +137,20 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.menuItem != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Menu Item' : 'Add Menu Item'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark 
+                ? [Colors.grey.shade900, Colors.grey.shade800]
+                : [Colors.green.shade600, Colors.green.shade400],
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -150,6 +161,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Image Picker
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -183,6 +195,45 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // ✅ VEG/NON-VEG TOGGLE
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.restaurant,
+                              color: _isVeg ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _isVeg ? 'Pure Vegetarian' : 'Non-Vegetarian',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Switch(
+                              value: _isVeg,
+                              onChanged: (value) {
+                                setState(() => _isVeg = value);
+                              },
+                              activeColor: Colors.green,
+                              inactiveThumbColor: Colors.red,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Name
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -199,7 +250,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // ✅ FIX: Integer-only price input
+                    // Price
                     TextFormField(
                       controller: _priceController,
                       decoration: const InputDecoration(
@@ -228,6 +279,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Category
                     TextFormField(
                       controller: _categoryController,
                       decoration: const InputDecoration(
@@ -245,6 +297,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Description
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
@@ -256,6 +309,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Availability Toggle
                     SwitchListTile(
                       title: const Text('Available'),
                       subtitle: Text(_available ? 'Item is available' : 'Item is unavailable'),
@@ -267,11 +321,15 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // Save Button
                     ElevatedButton(
                       onPressed: _saveMenuItem,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: Text(
                         isEditing ? 'Update Item' : 'Add Item',

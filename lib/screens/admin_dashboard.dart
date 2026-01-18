@@ -1,10 +1,8 @@
-// lib/screens/admin_dashboard.dart - FIXED WITH ANALYTICS ACCESS
+// lib/screens/admin_dashboard.dart - ADMIN ANALYTICS ONLY
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
-import 'admin_orders_screen.dart';
-import 'admin_menu_screen.dart';
-import 'analytics_dashboard_screen.dart'; // ✅ Uses existing analytics
+import 'analytics_dashboard_screen.dart';
 import 'login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -171,109 +169,101 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Manage all restaurants, orders, and system analytics',
+              'Monitor all system analytics and performance',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+            const SizedBox(height: 32),
+
+            // ✅ ONLY ANALYTICS - NO ORDERS/MENU MANAGEMENT
+            Center(
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AnalyticsDashboardScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 280,
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.analytics,
+                            size: 64,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'System Analytics',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'View all restaurants and system-wide metrics',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // ✅ INFO BOX
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
                 children: [
-                  // ✅ ANALYTICS CARD (TOP PRIORITY)
-                  _buildDashboardCard(
-                    icon: Icons.analytics,
-                    title: 'Analytics',
-                    subtitle: 'View all system metrics',
-                    color: Colors.blue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AnalyticsDashboardScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    icon: Icons.restaurant_menu,
-                    title: 'Manage Menu',
-                    subtitle: 'Add, edit, delete items',
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminMenuScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    icon: Icons.shopping_bag,
-                    title: 'Manage Orders',
-                    subtitle: 'View and update orders',
-                    color: Colors.green,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminOrdersScreen(),
-                        ),
-                      );
-                    },
+                  Icon(Icons.info_outline, color: Colors.blue.shade700),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Restaurant owners manage their own orders and menus through their dashboard',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDashboardCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 48, color: color),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
         ),
       ),
     );
