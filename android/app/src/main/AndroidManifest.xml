@@ -12,9 +12,9 @@
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <!-- Inside <application> tag, add: -->
-    <meta-data
-        android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyCsougJP2BQJvz5Yc_lTgF0ZoLKlDlwP7k"/>
+  <meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="${MAPS_API_KEY}" />
 
     <application
         android:name="${applicationName}"
