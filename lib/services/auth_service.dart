@@ -1,4 +1,4 @@
-// lib/services/auth_service.dart
+// lib/services/auth_service.dart - COMPLETE WITH OTP SUPPORT
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,9 +23,19 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await saveToken(data['token']);
+        await saveUserData(data['user']);
         return {
           'success': true,
           'user': User.fromJson(data['user']),
+        };
+      } else if (response.statusCode == 403) {
+        // User not verified
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'requiresOTP': data['requiresOTP'],
+          'userId': data['userId'],
+          'message': data['message'],
         };
       } else {
         final error = jsonDecode(response.body);
@@ -42,14 +52,23 @@ class AuthService {
     }
   }
 
-  // REGISTER
+  // REGISTER with OTP
   Future<Map<String, dynamic>> register(
     String name,
     String email,
     String password,
+    String phone,
     String role,
   ) async {
     try {
+      // Frontend validation
+      if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
+        return {
+          'success': false,
+          'message': 'Phone number must be exactly 10 digits',
+        };
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
@@ -57,14 +76,18 @@ class AuthService {
           'name': name,
           'email': email,
           'password': password,
+          'phone': phone,
           'role': role,
         }),
       );
 
       if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
         return {
           'success': true,
-          'message': 'Registration successful',
+          'message': data['message'],
+          'userId': data['userId'],
+          'otp': data['otp'], // MVP: OTP returned
         };
       } else {
         final error = jsonDecode(response.body);
@@ -81,10 +104,81 @@ class AuthService {
     }
   }
 
-  // TOKEN STORAGE
+  // VERIFY OTP
+  Future<Map<String, dynamic>> verifyOTP(String userId, String code) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'code': code,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': data['message'],
+        };
+      } else {
+        final error = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': error['message'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  // RESEND OTP
+  Future<Map<String, dynamic>> resendOTP(String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/resend-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': data['message'],
+          'otp': data['otp'], // MVP: OTP returned
+        };
+      } else {
+        final error = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': error['message'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  // TOKEN AND USER DATA STORAGE
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
+  }
+
+  Future<void> saveUserData(Map<String, dynamic> user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user', jsonEncode(user));
   }
 
   Future<String?> getToken() async {
@@ -92,8 +186,18 @@ class AuthService {
     return prefs.getString('token');
   }
 
+  Future<User?> getUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user');
+    if (userJson != null) {
+      return User.fromJson(jsonDecode(userJson));
+    }
+    return null;
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    await prefs.remove('user');
   }
 }

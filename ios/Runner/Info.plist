@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+
+<!-- Add to ios/Runner/Info.plist -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>We need your location to show nearby restaurants</string>
+<key>NSLocationAlwaysUsageDescription</key>
+<string>We need your location to show nearby restaurants</string>
+<key>NSCameraUsageDescription</key>
+<string>We need camera access to upload photos</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>We need photo library access to upload images</string>
+<key>io.flutter.embedded_views_preview</key>
+<true/>
+
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>

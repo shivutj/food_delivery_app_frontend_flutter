@@ -34,7 +34,8 @@ class CartScreen extends StatelessWidget {
     Navigator.pop(context);
 
     if (success) {
-      cart.clear();
+      // cart.clear();
+      await cart.clearCart();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Order placed successfully!'),

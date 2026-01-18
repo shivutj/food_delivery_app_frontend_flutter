@@ -30,6 +30,28 @@ class ApiService {
     }
   }
 
+  // ==================== ANALYTICS ====================
+  
+  Future<Map<String, dynamic>?> getAnalytics(String timeRange) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/analytics/dashboard?timeRange=$timeRange'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print('Get analytics error: $e');
+      return null;
+    }
+  }
+
   Future<bool> updateRestaurantImage(String restaurantId, String imageUrl) async {
     try {
       final token = await _authService.getToken();
