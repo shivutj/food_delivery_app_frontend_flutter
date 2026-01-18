@@ -1,12 +1,13 @@
-// lib/screens/add_edit_menu_screen.dart
+// lib/screens/add_edit_menu_screen.dart - COMPLETE FIXED FILE
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/menu_item.dart';
 import '../services/api_service.dart';
 
 class AddEditMenuScreen extends StatefulWidget {
-  final MenuItem? menuItem; // null for add, populated for edit
+  final MenuItem? menuItem;
   final String restaurantId;
 
   const AddEditMenuScreen({
@@ -39,7 +40,7 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.menuItem?.name ?? '');
     _priceController = TextEditingController(
-      text: widget.menuItem?.price.toString() ?? '',
+      text: widget.menuItem?.price.toInt().toString() ?? '',
     );
     _categoryController = TextEditingController(
       text: widget.menuItem?.category ?? '',
@@ -72,7 +73,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Upload new image if selected
       String finalImageUrl = _imageUrl ?? '';
       if (_imageFile != null) {
         final uploadedUrl = await _apiService.uploadImage(_imageFile!);
@@ -85,37 +85,39 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
         }
       }
 
-      // Validate image URL
       if (finalImageUrl.isEmpty) {
         _showError('Please select an image');
         setState(() => _isLoading = false);
         return;
       }
 
-      final menuItem = MenuItem(
-        id: widget.menuItem?.id ?? '',
-        restaurantId: widget.restaurantId,
-        name: _nameController.text.trim(),
-        price: double.parse(_priceController.text.trim()),
-        image: finalImageUrl,
-        category: _categoryController.text.trim(),
-        description: _descriptionController.text.trim(),
-        available: _available,
-      );
+      // ✅ FIX: Parse as int directly
+      final priceValue = int.parse(_priceController.text.trim());
+
+     final menuItem = MenuItem(
+  id: widget.menuItem?.id ?? '',
+  restaurantId: widget.restaurantId,
+  name: _nameController.text.trim(),
+  price: priceValue, // ✅ INT ONLY
+  image: finalImageUrl,
+  category: _categoryController.text.trim(),
+  description: _descriptionController.text.trim(),
+  available: _available,
+  isVeg: widget.menuItem?.isVeg ?? true, // or from UI toggle
+  video: widget.menuItem?.video,
+);
 
       bool success;
       if (widget.menuItem == null) {
-        // Add new item
         success = await _apiService.addMenuItem(menuItem);
       } else {
-        // Update existing item
         success = await _apiService.updateMenuItem(menuItem.id, menuItem);
       }
 
       setState(() => _isLoading = false);
 
       if (success) {
-        Navigator.pop(context, true); // Return true to refresh list
+        Navigator.pop(context, true);
       } else {
         _showError('Failed to save menu item');
       }
@@ -148,7 +150,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Image Preview
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -182,7 +183,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Name Field
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -199,28 +199,35 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Price Field
+                    // ✅ FIX: Integer-only price input
                     TextFormField(
                       controller: _priceController,
                       decoration: const InputDecoration(
-                        labelText: 'Price',
+                        labelText: 'Price (₹)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.currency_rupee),
+                        hintText: 'e.g., 299',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter price';
                         }
-                        if (double.tryParse(value) == null) {
+                        final price = int.tryParse(value);
+                        if (price == null) {
                           return 'Please enter valid price';
+                        }
+                        if (price <= 0) {
+                          return 'Price must be greater than 0';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
 
-                    // Category Field
                     TextFormField(
                       controller: _categoryController,
                       decoration: const InputDecoration(
@@ -238,7 +245,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Description Field
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
@@ -250,7 +256,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Availability Switch
                     SwitchListTile(
                       title: const Text('Available'),
                       subtitle: Text(_available ? 'Item is available' : 'Item is unavailable'),
@@ -262,7 +267,6 @@ class _AddEditMenuScreenState extends State<AddEditMenuScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Save Button
                     ElevatedButton(
                       onPressed: _saveMenuItem,
                       style: ElevatedButton.styleFrom(

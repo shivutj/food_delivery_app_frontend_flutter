@@ -1,17 +1,16 @@
-// lib/screens/profile_screen.dart - COMPLETE PROFILE MANAGEMENT
+// lib/screens/profile_screen.dart - COMPLETE FILE
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import '../providers/theme_provider.dart';
 import 'location_picker_screen.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key}); // ✅ NO required user parameter
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -66,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (imageUrl != null) {
       final success = await _apiService.updateProfilePhoto(imageUrl);
       
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
       
       if (success) {
         await _loadProfile();
@@ -107,19 +106,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Parse address from location data
     final addressParts = (locationData['address'] as String).split(', ');
     
     final success = await _apiService.updateAddress(
       street: addressParts.isNotEmpty ? addressParts[0] : '',
       city: addressParts.length > 1 ? addressParts[1] : '',
       state: addressParts.length > 2 ? addressParts[2] : '',
-      pincode: '600001', // Default, user can edit later
+      pincode: '600001',
       latitude: locationData['latitude'],
       longitude: locationData['longitude'],
     );
 
-    Navigator.pop(context); // Close loading
+    Navigator.pop(context);
 
     if (success) {
       await _loadProfile();
@@ -169,17 +167,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
         actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => themeProvider.toggleTheme(),
-            tooltip: themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -193,7 +184,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Profile Photo
                   Center(
                     child: Stack(
                       children: [
@@ -226,7 +216,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // User Info Card
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -250,7 +239,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Address Card
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),

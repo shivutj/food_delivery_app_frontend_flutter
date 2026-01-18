@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart - ENHANCED WITH BEAUTIFUL UI
+// lib/screens/home_screen.dart - COMPLETE FIXED FILE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -12,6 +12,7 @@ import 'menu_screen.dart';
 import 'cart_screen.dart';
 import 'orders_screen.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart'; // ✅ ADDED
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -33,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadRestaurants();
-    // Load cart on home screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<CartProvider>(context, listen: false).loadCart();
     });
@@ -161,7 +161,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // ✅ Beautiful App Bar
           SliverAppBar(
             expandedHeight: 200,
             floating: false,
@@ -205,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             actions: [
-              // Cart with badge
+              // ✅ Cart Icon with Badge
               Consumer<CartProvider>(
                 builder: (context, cart, child) {
                   return Stack(
@@ -248,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              // Orders History
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.white),
                 onPressed: () {
@@ -257,10 +257,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              // ✅ Profile Icon - Fixed Navigation
               IconButton(
                 icon: const Icon(Icons.account_circle, color: Colors.white),
-                onPressed: _showUserProfile,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                  );
+                },
               ),
+              // Logout
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.white),
                 onPressed: _logout,
@@ -268,7 +275,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
-          // ✅ Search Bar
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -288,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ✅ Restaurants List
           _isLoading
               ? SliverToBoxAdapter(
                   child: _buildShimmerLoading(),
@@ -332,7 +337,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Restaurant Image
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: CachedNetworkImage(

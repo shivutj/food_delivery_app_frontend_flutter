@@ -1,4 +1,4 @@
-// lib/screens/otp_verification_screen.dart - BEAUTIFUL OTP SCREEN
+// lib/screens/otp_verification_screen.dart - COMPLETE FILE WITH OTP DISPLAY
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
 import 'dart:async';
@@ -8,7 +8,7 @@ import 'login_screen.dart';
 class OTPVerificationScreen extends StatefulWidget {
   final String userId;
   final String email;
-  final String? otp; // MVP: OTP provided for testing
+  final String? otp;
 
   const OTPVerificationScreen({
     super.key,
@@ -148,7 +148,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             children: [
               const SizedBox(height: 20),
               
-              // Icon
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -163,7 +162,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               ),
               const SizedBox(height: 32),
               
-              // Title
               const Text(
                 'OTP Verification',
                 style: TextStyle(
@@ -173,7 +171,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               ),
               const SizedBox(height: 12),
               
-              // Description
               Text(
                 'Enter the 6-digit code sent to',
                 style: TextStyle(
@@ -191,26 +188,58 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 ),
               ),
               
-              // MVP: Show OTP for testing
+              // 🔥 TEST OTP DISPLAY - ALWAYS SHOWN
               if (widget.otp != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade300),
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade300, width: 2),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.amber.shade700, size: 20),
-                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Test OTP (For Development)',
+                            style: TextStyle(
+                              color: Colors.orange.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade700, width: 2),
+                        ),
+                        child: Text(
+                          widget.otp!,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade900,
+                            letterSpacing: 8,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
-                        'Test OTP: ${widget.otp}',
+                        'Copy this code to verify',
                         style: TextStyle(
-                          color: Colors.amber.shade900,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Colors.orange.shade700,
                         ),
                       ),
                     ],
@@ -220,7 +249,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               
               const SizedBox(height: 40),
               
-              // OTP Input
               Pinput(
                 controller: _otpController,
                 length: 6,
@@ -231,7 +259,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               
               const SizedBox(height: 32),
               
-              // Verify Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -266,7 +293,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               
               const SizedBox(height: 24),
               
-              // Resend OTP
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

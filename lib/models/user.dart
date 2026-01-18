@@ -19,16 +19,18 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      role: json['role'] ?? 'customer',
-      profilePhoto: json['profilePhoto'],
-      address: json['address'] != null ? Address.fromJson(json['address']) : null,
-    );
-  }
+  return User(
+    id: json['id'] ?? json['_id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'] ?? '',
+    phone: json['phone'] ?? '',
+    role: json['role'] ?? 'customer',
+    profilePhoto: json['profilePhoto'],
+    address: json['address'] != null
+        ? Address.fromJson(json['address'])
+        : null,
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {

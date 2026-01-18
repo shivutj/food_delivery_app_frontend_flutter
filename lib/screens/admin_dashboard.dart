@@ -1,10 +1,10 @@
-// lib/screens/admin_dashboard.dart - FINAL VERSION WITH NAME AND PHONE DISPLAY
+// lib/screens/admin_dashboard.dart - COMPLETE ADMIN DASHBOARD
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../models/user.dart';
 import 'admin_orders_screen.dart';
 import 'admin_menu_screen.dart';
 import 'login_screen.dart';
-import '../models/user.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});

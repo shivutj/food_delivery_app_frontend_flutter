@@ -1,10 +1,9 @@
-// lib/screens/login_screen.dart - ENHANCED WITH OTP & BEAUTIFUL UI
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'admin_dashboard.dart';
 import 'otp_verification_screen.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,20 +12,21 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
-  
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
-  
+
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _selectedRole = 'customer';
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -34,87 +34,77 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-    
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
     _animationController.forward();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  // lib/screens/login_screen.dart - ADMIN LOGIN FIX
+// REPLACE the _submit() method with this version:
 
-    setState(() => _isLoading = true);
+Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_isLogin) {
-      // LOGIN
-      final result = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+  setState(() => _isLoading = true);
 
-      setState(() => _isLoading = false);
+  if (_isLogin) {
+    // LOGIN
+    final result = await _authService.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
 
-      if (result['success']) {
-        final user = result['user'];
-        if (user.role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const AdminDashboard()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
-          );
-        }
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      final user = result['user'];
+      
+      // 🔍 DEBUG: Print user role
+      print('🔐 Login Success - User Role: ${user.role}');
+      print('🔐 User Email: ${user.email}');
+      print('🔐 User Name: ${user.name}');
+      
+      // ✅ FIXED: Check role and navigate accordingly
+      if (user.role == 'admin') {
+        print('✅ Navigating to Admin Dashboard');
+        
+        // Make sure AdminDashboard is imported
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboard()),
+        );
       } else {
-        // Check if requires OTP
-        if (result['requiresOTP'] == true) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(
-                userId: result['userId'],
-                email: _emailController.text.trim(),
-              ),
-            ),
-          );
-        } else {
-          _showSnackBar(result['message'], Colors.red);
-        }
+        print('✅ Navigating to Customer Home');
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+        );
       }
     } else {
-      // REGISTER
-      final result = await _authService.register(
-        _nameController.text.trim(),
-        _emailController.text.trim(),
-        _passwordController.text,
-        _phoneController.text.trim(),
-        _selectedRole,
-      );
-
-      setState(() => _isLoading = false);
-
-      if (result['success']) {
-        // Navigate to OTP verification
+      // Check if requires OTP
+      if (result['requiresOTP'] == true) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationScreen(
               userId: result['userId'],
               email: _emailController.text.trim(),
-              otp: result['otp'], // MVP: OTP returned from backend
             ),
           ),
         );
@@ -122,15 +112,43 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         _showSnackBar(result['message'], Colors.red);
       }
     }
-  }
+  } else {
+    // REGISTER CODE (unchanged)
+    final result = await _authService.register(
+      _nameController.text.trim(),
+      _emailController.text.trim(),
+      _passwordController.text,
+      _phoneController.text.trim(),
+      _selectedRole,
+    );
 
-  void _showSnackBar(String message, Color color) {
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OTPVerificationScreen(
+            userId: result['userId'],
+            email: _emailController.text.trim(),
+            otp: result['otp'],
+          ),
+        ),
+      );
+    } else {
+      _showSnackBar(result['message'], Colors.red);
+    }
+  }
+}
+
+
+
+  void _showSnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(msg),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -141,12 +159,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.green.shade400,
-              Colors.green.shade700,
-            ],
+            colors: [Colors.green.shade400, Colors.green.shade700],
           ),
         ),
         child: SafeArea(
@@ -158,7 +171,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 child: SlideTransition(
                   position: _slideAnimation,
                   child: Card(
-                    elevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -169,229 +181,76 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Logo
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.restaurant_menu,
-                                size: 60,
-                                color: Colors.green.shade700,
+                            Icon(Icons.restaurant_menu,
+                                size: 64, color: Colors.green.shade700),
+                            const SizedBox(height: 24),
+
+                            Text(
+                              _isLogin ? 'Welcome Back' : 'Create Account',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 24),
-                            
-                            // Title
-                            Text(
-                              _isLogin ? 'Welcome Back!' : 'Create Account',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
-                              ),
+
+                            if (!_isLogin)
+                              _field(_nameController, 'Name', Icons.person),
+
+                            _field(
+                              _emailController,
+                              'Email',
+                              Icons.email,
+                              type: TextInputType.emailAddress,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _isLogin 
-                                  ? 'Login to continue ordering'
-                                  : 'Sign up to start ordering',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
+
+                            if (!_isLogin)
+                              _field(
+                                _phoneController,
+                                'Phone',
+                                Icons.phone,
+                                type: TextInputType.phone,
+                                max: 10,
                               ),
-                            ),
-                            const SizedBox(height: 32),
 
-                            // Name Field (Register only)
-                            if (!_isLogin) ...[
-                              _buildTextField(
-                                controller: _nameController,
-                                label: 'Full Name',
-                                icon: Icons.person_outline,
-                                validator: (value) {
-                                  if (!_isLogin && (value == null || value.trim().isEmpty)) {
-                                    return 'Please enter your name';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // Email Field
-                            _buildTextField(
-                              controller: _emailController,
-                              label: 'Email',
-                              icon: Icons.email_outlined,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Phone Field (Register only)
-                            if (!_isLogin) ...[
-                              _buildTextField(
-                                controller: _phoneController,
-                                label: 'Phone Number',
-                                icon: Icons.phone_outlined,
-                                keyboardType: TextInputType.phone,
-                                maxLength: 10,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                validator: (value) {
-                                  if (!_isLogin) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'Please enter your phone number';
-                                    }
-                                    if (value.length != 10) {
-                                      return 'Phone must be 10 digits';
-                                    }
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // Password Field
-                            _buildTextField(
-                              controller: _passwordController,
-                              label: 'Password',
-                              icon: Icons.lock_outline,
-                              obscureText: _obscurePassword,
-                              suffixIcon: IconButton(
+                            _field(
+                              _passwordController,
+                              'Password',
+                              Icons.lock,
+                              obscure: _obscurePassword,
+                              suffix: IconButton(
                                 icon: Icon(
                                   _obscurePassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
                                 ),
                                 onPressed: () {
-                                  setState(() => _obscurePassword = !_obscurePassword);
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
                                 },
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                if (!_isLogin && value.length < 6) {
-                                  return 'Password must be at least 6 characters';
-                                }
-                                return null;
-                              },
                             ),
-                            const SizedBox(height: 16),
 
-                            // Role Selector (Register only)
-                            if (!_isLogin)
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedRole,
-                                  decoration: const InputDecoration(
-                                    labelText: 'I am a',
-                                    prefixIcon: Icon(Icons.badge_outlined),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'customer',
-                                      child: Text('Customer'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'admin',
-                                      child: Text('Restaurant Owner'),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    setState(() => _selectedRole = value!);
-                                  },
-                                ),
-                              ),
-                            
                             const SizedBox(height: 24),
 
-                            // Submit Button
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _submit,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        _isLogin ? 'Login' : 'Register',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                              ),
+                            ElevatedButton(
+                              onPressed: _isLoading ? null : _submit,
+                              child: _isLoading
+                                  ? const CircularProgressIndicator()
+                                  : Text(_isLogin ? 'Login' : 'Register'),
                             ),
-                            const SizedBox(height: 16),
 
-                            // Toggle Login/Register
                             TextButton(
                               onPressed: () {
                                 setState(() {
                                   _isLogin = !_isLogin;
-                                  _formKey.currentState?.reset();
-                                  _nameController.clear();
-                                  _emailController.clear();
-                                  _passwordController.clear();
-                                  _phoneController.clear();
                                 });
-                                _animationController.reset();
-                                _animationController.forward();
                               },
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(color: Colors.grey.shade700),
-                                  children: [
-                                    TextSpan(
-                                      text: _isLogin
-                                          ? "Don't have an account? "
-                                          : 'Already have an account? ',
-                                    ),
-                                    TextSpan(
-                                      text: _isLogin ? 'Register' : 'Login',
-                                      style: TextStyle(
-                                        color: Colors.green.shade700,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              child: Text(
+                                _isLogin
+                                    ? 'Create account'
+                                    : 'Already have account',
                               ),
                             ),
                           ],
@@ -408,44 +267,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    int? maxLength,
-    String? Function(String?)? validator,
+  Widget _field(
+    TextEditingController c,
+    String label,
+    IconData icon, {
+    bool obscure = false,
+    Widget? suffix,
+    TextInputType? type,
+    int? max,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      maxLength: maxLength,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        suffixIcon: suffixIcon,
-        counterText: maxLength != null ? '' : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: c,
+        obscureText: obscure,
+        keyboardType: type,
+        maxLength: max,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          suffixIcon: suffix,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.green.shade600, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
+        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
       ),
-      validator: validator,
     );
   }
 

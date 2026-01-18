@@ -1,13 +1,15 @@
-// lib/models/menu_item.dart
+// lib/models/menu_item.dart - WITH VEG/NON-VEG SUPPORT
 class MenuItem {
   final String id;
   final String restaurantId;
   final String name;
-  final double price;
+  final int price; // ✅ INTEGER ONLY (no decimals)
   final String image;
   final String category;
   final String? description;
   final bool available;
+  final bool isVeg; // ✅ NEW: Veg/Non-Veg flag
+  final String? video; // ✅ NEW: Video URL
 
   MenuItem({
     required this.id,
@@ -18,6 +20,8 @@ class MenuItem {
     required this.category,
     this.description,
     this.available = true,
+    this.isVeg = true, // Default to Veg
+    this.video,
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
@@ -25,11 +29,13 @@ class MenuItem {
       id: json['_id'] ?? '',
       restaurantId: json['restaurant_id'] ?? '',
       name: json['name'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
+      price: (json['price'] ?? 0).toInt(), // ✅ Ensure integer
       image: json['image'] ?? '',
       category: json['category'] ?? '',
       description: json['description'],
       available: json['available'] ?? true,
+      isVeg: json['isVeg'] ?? true, // ✅ NEW
+      video: json['video'], // ✅ NEW
     );
   }
 
@@ -42,6 +48,8 @@ class MenuItem {
       'category': category,
       'description': description,
       'available': available,
+      'isVeg': isVeg, // ✅ NEW
+      'video': video, // ✅ NEW
     };
   }
 }

@@ -1,10 +1,11 @@
-// lib/screens/menu_screen.dart - ENHANCED WITH PERSISTENT CART BUTTONS
+// lib/screens/menu_screen.dart - COMPLETE FIXED FILE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/restaurant.dart';
 import '../models/menu_item.dart';
 import '../services/api_service.dart';
 import '../providers/cart_provider.dart';
+import 'cart_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -39,6 +40,50 @@ class _MenuScreenState extends State<MenuScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.restaurant.name),
+        actions: [
+          Consumer<CartProvider>(
+            builder: (context, cart, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                      );
+                    },
+                  ),
+                  if (cart.totalItemCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '${cart.totalItemCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -69,7 +114,6 @@ class _MenuScreenState extends State<MenuScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
@@ -89,7 +133,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 const SizedBox(width: 12),
                 
-                // Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +157,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         ),
                       const SizedBox(height: 8),
                       Text(
-                        '₹${item.price}',
+                        '₹${item.price.toInt()}',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -125,12 +168,10 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                 ),
                 
-                // Add/Quantity Button
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (!isInCart)
-                      // ADD Button
                       ElevatedButton(
                         onPressed: item.available
                             ? () {
@@ -152,11 +193,13 @@ class _MenuScreenState extends State<MenuScreen> {
                         ),
                         child: Text(
                           item.available ? 'ADD' : 'Unavailable',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       )
                     else
-                      // Quantity Controls
                       Container(
                         decoration: BoxDecoration(
                           color: Theme.of(context).primaryColor,
