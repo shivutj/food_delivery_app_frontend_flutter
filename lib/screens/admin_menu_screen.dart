@@ -1,9 +1,8 @@
-// lib/screens/admin_menu_screen.dart - FIXED
 import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
-import '../models/menu_item.dart'; // CHANGED: was menu.dart
+import '../models/menu_item.dart';
 import '../services/api_service.dart';
-import 'add_edit_menu_screen.dart'; // NEW: for add/edit functionality
+import 'add_edit_menu_screen.dart';
 
 class AdminMenuScreen extends StatefulWidget {
   const AdminMenuScreen({super.key});
@@ -39,7 +38,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
     if (_selectedRestaurantId != null) {
       final menu = await _apiService.getMenu(_selectedRestaurantId!);
       setState(() {
-        _menuItems = menu; // Now types match
+        _menuItems = menu;
       });
     }
   }
@@ -84,6 +83,114 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
     }
   }
 
+  // 🔹 EMPTY MENU STATE UI
+  Widget _buildEmptyMenuState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.restaurant_menu,
+                size: 80,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Your Menu is Empty',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Start adding delicious items to your menu!\n\nTap the + button below to add your first food item.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade700),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Quick Start Guide',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGuideStep('1', 'Add food items with name, price & image'),
+                  _buildGuideStep('2', 'Set availability for each item'),
+                  _buildGuideStep('3', 'Start receiving orders from customers'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: Colors.blue.shade700,
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[800],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,7 +201,6 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Restaurant Selector
                 Container(
                   padding: const EdgeInsets.all(16),
                   color: Colors.grey[100],
@@ -118,11 +224,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                     },
                   ),
                 ),
-
-                // Menu Items List
                 Expanded(
                   child: _menuItems.isEmpty
-                      ? const Center(child: Text('No menu items'))
+                      ? _buildEmptyMenuState()
                       : ListView.builder(
                           itemCount: _menuItems.length,
                           padding: const EdgeInsets.all(8),
@@ -137,31 +241,27 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 60,
-                                        height: 60,
-                                        color: Colors.grey[300],
-                                        child: const Icon(Icons.fastfood),
-                                      );
-                                    },
                                   ),
                                 ),
                                 title: Text(item.name),
-                                subtitle: Text('₹${item.price} • ${item.category}'),
+                                subtitle:
+                                    Text('₹${item.price} • ${item.category}'),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Edit Button
                                     IconButton(
-                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      icon: const Icon(Icons.edit,
+                                          color: Colors.blue),
                                       onPressed: () async {
-                                        final result = await Navigator.push(
+                                        final result =
+                                            await Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => AddEditMenuScreen(
+                                            builder: (context) =>
+                                                AddEditMenuScreen(
                                               menuItem: item,
-                                              restaurantId: _selectedRestaurantId!,
+                                              restaurantId:
+                                                  _selectedRestaurantId!,
                                             ),
                                           ),
                                         );
@@ -170,10 +270,11 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                                         }
                                       },
                                     ),
-                                    // Delete Button
                                     IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _deleteMenuItem(item.id),
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () =>
+                                          _deleteMenuItem(item.id),
                                     ),
                                   ],
                                 ),

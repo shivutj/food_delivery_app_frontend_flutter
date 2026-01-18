@@ -1,7 +1,8 @@
-// lib/main.dart - COMPLETE WITH ALL PROVIDERS
+// lib/main.dart - UPDATED WITH THEME PROVIDER
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/theme_provider.dart'; // NEW
 import 'screens/login_screen.dart';
 
 void main() {
@@ -16,56 +17,36 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()), // NEW
       ],
-      child: MaterialApp(
-        title: 'Food Delivery App',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.green,
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
-            brightness: Brightness.light,
-          ),
-          appBarTheme: AppBarTheme(
-            elevation: 0,
-            centerTitle: false,
-            backgroundColor: Colors.green.shade600,
-            foregroundColor: Colors.white,
-          ),
-          cardTheme: CardThemeData(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          // Show loading screen until theme is loaded
+          if (!themeProvider.isLoaded) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: const Color(0xFF4CAF50),
+                  ),
+                ),
               ),
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.green.shade600, width: 2),
-            ),
-          ),
-        ),
-        home: const LoginScreen(),
+            );
+          }
+
+          return MaterialApp(
+            title: 'Food Delivery App',
+            debugShowCheckedModeBanner: false,
+            
+            // Dynamic theme switching
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            
+            home: const LoginScreen(),
+          );
+        },
       ),
     );
   }
