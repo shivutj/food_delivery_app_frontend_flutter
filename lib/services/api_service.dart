@@ -31,16 +31,19 @@ class ApiService {
   }
 
   // ✅ ADDED - Get restaurant owner's restaurant
-  Future<Map<String, dynamic>?> getMyRestaurant() async {
+  Future<Restaurant?> getMyRestaurant() async {
   try {
     final token = await _authService.getToken();
     final response = await http.get(
       Uri.parse('$baseUrl/restaurants/my-restaurant'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body); // ✅ Return Map, not Restaurant
+      final data = jsonDecode(response.body);
+      return Restaurant.fromJson(data); // ✅ Convert to Restaurant object
     }
     return null;
   } catch (e) {

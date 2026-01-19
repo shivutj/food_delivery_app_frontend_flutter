@@ -37,15 +37,12 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
 
   Future<void> _loadRestaurant() async {
   setState(() => _isLoading = true);
-  final restaurantData = await _apiService.getMyRestaurant();
+  
+  // ✅ FIXED - getMyRestaurant() already returns Restaurant object
+  final restaurant = await _apiService.getMyRestaurant();
   
   setState(() {
-    // ✅ FIX: restaurantData is already a Map, not a Restaurant
-    if (restaurantData != null) {
-      _myRestaurant = Restaurant.fromJson(restaurantData); // This is correct
-    } else {
-      _myRestaurant = null;
-    }
+    _myRestaurant = restaurant; // ✅ Direct assignment (no fromJson needed)
     _isLoading = false;
   });
 }
