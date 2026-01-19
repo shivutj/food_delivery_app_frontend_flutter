@@ -1,7 +1,8 @@
-// lib/providers/cart_provider.dart - PERSISTENT CART WITH STORAGE
+// lib/providers/cart_provider.dart - OPTIMIZED VERSION
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:async';
 import '../models/menu_item.dart';
 
 class CartItem {
@@ -37,9 +38,12 @@ class CartItem {
 class CartProvider with ChangeNotifier {
   final Map<String, CartItem> _items = {};
   bool _isLoaded = false;
+  Timer? _saveTimer;
+
+  // Debounce duration for saving
+  static const Duration _saveDuration = Duration(milliseconds: 500);
 
   Map<String, CartItem> get items => _items;
-
   int get itemCount => _items.length;
 
   int get totalItemCount {
@@ -54,7 +58,7 @@ class CartProvider with ChangeNotifier {
     return total;
   }
 
-  // ✅ Load cart from storage
+  // Load cart from storage (optimized - only once)
   Future<void> loadCart() async {
     if (_isLoaded) return;
     
@@ -78,7 +82,12 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // ✅ Save cart to storage
+  // Debounced save to prevent excessive writes
+  void _debouncedSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(_saveDuration, _saveCart);
+  }
+
   Future<void> _saveCart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -89,26 +98,26 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // ✅ Add item with persistence
-  Future<void> addItem(MenuItem menuItem) async {
+  // Optimized add item - immediate UI update, debounced save
+  void addItem(MenuItem menuItem) {
     if (_items.containsKey(menuItem.id)) {
       _items[menuItem.id]!.quantity++;
     } else {
       _items[menuItem.id] = CartItem(menuItem: menuItem);
     }
     notifyListeners();
-    await _saveCart();
+    _debouncedSave();
   }
 
-  // ✅ Remove item with persistence
-  Future<void> removeItem(String menuItemId) async {
+  // Optimized remove item
+  void removeItem(String menuItemId) {
     _items.remove(menuItemId);
     notifyListeners();
-    await _saveCart();
+    _debouncedSave();
   }
 
-  // ✅ Update quantity with persistence
-  Future<void> updateQuantity(String menuItemId, int quantity) async {
+  // Optimized update quantity
+  void updateQuantity(String menuItemId, int quantity) {
     if (_items.containsKey(menuItemId)) {
       if (quantity > 0) {
         _items[menuItemId]!.quantity = quantity;
@@ -116,15 +125,15 @@ class CartProvider with ChangeNotifier {
         _items.remove(menuItemId);
       }
       notifyListeners();
-      await _saveCart();
+      _debouncedSave();
     }
   }
 
-  // ✅ Clear cart (only after successful order)
+  // Clear cart (immediate save)
   Future<void> clearCart() async {
     _items.clear();
     notifyListeners();
-    await _saveCart();
+    await _saveCart(); // Immediate save for critical action
   }
 
   // Get order items in API format
@@ -137,5 +146,11 @@ class CartProvider with ChangeNotifier {
         'quantity': cartItem.quantity,
       };
     }).toList();
+  }
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    super.dispose();
   }
 }

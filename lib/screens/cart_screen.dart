@@ -1,10 +1,11 @@
-// lib/screens/cart_screen.dart - WITH COUPON SUPPORT
+// lib/screens/cart_screen.dart - COMPLETE REPLACEMENT WITH PAYMENT
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/cart_provider.dart';
-import '../services/api_service.dart';
+import '../services/payment_service.dart';
 import 'coupons_screen.dart';
+import 'payment_method_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -14,8 +15,11 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  final PaymentService _paymentService = PaymentService();
   String? _appliedCoupon;
   double _discount = 0.0;
+  String _selectedPaymentMethod = 'cod';
+  bool _isProcessing = false;
 
   void _applyCoupon(BuildContext context) {
     final couponController = TextEditingController();
@@ -74,7 +78,6 @@ class _CartScreenState extends State<CartScreen> {
   void _validateAndApplyCoupon(String code) {
     final cart = Provider.of<CartProvider>(context, listen: false);
     
-    // ✅ Simple coupon validation (MVP)
     if (code == 'FIRST50' && cart.totalAmount >= 199) {
       setState(() {
         _appliedCoupon = code;
@@ -106,15 +109,19 @@ class _CartScreenState extends State<CartScreen> {
     _showMessage('Coupon removed', Colors.orange);
   }
 
-  void _showMessage(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  Future<void> _selectPaymentMethod() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentMethodScreen(
+          selectedMethod: _selectedPaymentMethod,
+        ),
       ),
     );
+
+    if (result != null) {
+      setState(() => _selectedPaymentMethod = result);
+    }
   }
 
   Future<void> _placeOrder(BuildContext context) async {
@@ -125,35 +132,166 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Processing Payment...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
 
-    final apiService = ApiService();
-    final finalAmount = cart.totalAmount - _discount;
-    
-    final success = await apiService.placeOrder(
-      cart.getOrderItems(),
-      finalAmount,
-    );
-
-    Navigator.pop(context);
-
-    if (success) {
-      // ✅ Clear cart ONLY after successful order
-      await cart.clearCart();
-      setState(() {
-        _appliedCoupon = null;
-        _discount = 0.0;
-      });
+    try {
+      final finalAmount = cart.totalAmount - _discount;
       
-      _showMessage('Order placed successfully! 🎉', Colors.green);
-      Navigator.pop(context);
-    } else {
-      _showMessage('Failed to place order', Colors.red);
+      final result = await _paymentService.processPayment(
+        items: cart.getOrderItems(),
+        total: finalAmount,
+        paymentMethod: _selectedPaymentMethod,
+      );
+
+      Navigator.pop(context); // Close loading dialog
+
+      if (result['success']) {
+        await cart.clearCart();
+        setState(() {
+          _appliedCoupon = null;
+          _discount = 0.0;
+          _isProcessing = false;
+        });
+        
+        _showSuccessDialog(result['orderId'], result['transactionId']);
+      } else {
+        setState(() => _isProcessing = false);
+        _showMessage(result['message'] ?? 'Payment failed', Colors.red);
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      setState(() => _isProcessing = false);
+      _showMessage('Error: ${e.toString()}', Colors.red);
     }
+  }
+
+  void _showSuccessDialog(String orderId, String transactionId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle,
+                color: Colors.green.shade600,
+                size: 64,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Order Placed Successfully!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Order ID:'),
+                      Text(
+                        '#${orderId.substring(orderId.length - 8)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Transaction ID:'),
+                      Text(
+                        transactionId.substring(0, 12),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Your order is being prepared',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Go back to home
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMessage(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -214,6 +352,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
+                            
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +377,7 @@ class _CartScreenState extends State<CartScreen> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove_circle_outline),
-                                        onPressed: () {
+                                        onPressed: _isProcessing ? null : () {
                                           if (cartItem.quantity > 1) {
                                             cart.updateQuantity(
                                               menuItem.id,
@@ -259,7 +398,7 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.add_circle_outline),
-                                        onPressed: () {
+                                        onPressed: _isProcessing ? null : () {
                                           cart.updateQuantity(
                                             menuItem.id,
                                             cartItem.quantity + 1,
@@ -272,9 +411,10 @@ class _CartScreenState extends State<CartScreen> {
                                 ],
                               ),
                             ),
+                            
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => cart.removeItem(menuItem.id),
+                              onPressed: _isProcessing ? null : () => cart.removeItem(menuItem.id),
                             ),
                           ],
                         ),
@@ -284,7 +424,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
 
-              // ✅ Coupon Section
+              // Coupon Section
               if (_appliedCoupon != null)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -321,7 +461,7 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: _removeCoupon,
+                        onPressed: _isProcessing ? null : _removeCoupon,
                       ),
                     ],
                   ),
@@ -346,13 +486,24 @@ class _CartScreenState extends State<CartScreen> {
                       // Apply Coupon Button
                       if (_appliedCoupon == null)
                         OutlinedButton.icon(
-                          onPressed: () => _applyCoupon(context),
+                          onPressed: _isProcessing ? null : () => _applyCoupon(context),
                           icon: const Icon(Icons.local_offer),
                           label: const Text('Apply Coupon'),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 48),
                           ),
                         ),
+                      const SizedBox(height: 12),
+
+                      // Payment Method Selection
+                      OutlinedButton.icon(
+                        onPressed: _isProcessing ? null : _selectPaymentMethod,
+                        icon: const Icon(Icons.payment),
+                        label: Text(_getPaymentMethodName()),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
                       const SizedBox(height: 12),
 
                       // Price Breakdown
@@ -408,21 +559,30 @@ class _CartScreenState extends State<CartScreen> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () => _placeOrder(context),
+                          onPressed: _isProcessing ? null : () => _placeOrder(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green.shade600,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Place Order',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                          child: _isProcessing
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Place Order',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -434,5 +594,20 @@ class _CartScreenState extends State<CartScreen> {
         },
       ),
     );
+  }
+
+  String _getPaymentMethodName() {
+    switch (_selectedPaymentMethod) {
+      case 'cod':
+        return 'Cash on Delivery 💵';
+      case 'upi':
+        return 'UPI Payment 📱';
+      case 'card':
+        return 'Card Payment 💳';
+      case 'wallet':
+        return 'Wallet Payment 👛';
+      default:
+        return 'Select Payment Method';
+    }
   }
 }
