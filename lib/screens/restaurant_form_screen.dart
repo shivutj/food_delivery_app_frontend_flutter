@@ -1,20 +1,20 @@
-// lib/screens/restaurant_form_screen.dart - NEW FILE
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:video_player/video_player.dart';
+
+import '../models/restaurant.dart';
 import '../services/api_service.dart';
 import 'location_picker_screen.dart';
 
 class RestaurantFormScreen extends StatefulWidget {
-  final String? restaurantId; // null = create, non-null = edit
-  final Map<String, dynamic>? existingData;
+  final String? restaurantId;
+  final Restaurant? initialData; // ✅ FIXED
 
   const RestaurantFormScreen({
     super.key,
     this.restaurantId,
-    this.existingData,
+    this.initialData,
   });
 
   @override
@@ -27,79 +27,52 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
   final ImagePicker _picker = ImagePicker();
 
   late TextEditingController _nameController;
-  late TextEditingController _descriptionController;
-  late TextEditingController _phoneController;
-  late TextEditingController _cuisineController;
 
-  // ✅ Media state
-  List<File> _imageFiles = [];
-  List<String> _existingImageUrls = [];
+  String? _imageUrl;
+  String? _videoUrl;
+
+  File? _imageFile;
   File? _videoFile;
-  String? _existingVideoUrl;
-  VideoPlayerController? _videoController;
 
-  // ✅ Location state
-  Map<String, dynamic>? _selectedLocation;
+  double? _latitude;
+  double? _longitude;
+  String? _address;
 
   bool _isLoading = false;
-  bool _isUploading = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.existingData?['name'] ?? '');
-    _descriptionController = TextEditingController(text: widget.existingData?['description'] ?? '');
-    _phoneController = TextEditingController(text: widget.existingData?['phone'] ?? '');
-    _cuisineController = TextEditingController(text: widget.existingData?['cuisine'] ?? '');
 
-    // Load existing data
-    if (widget.existingData != null) {
-      final images = widget.existingData!['images'];
-      if (images is List) {
-        _existingImageUrls = List<String>.from(images);
-      }
-      _existingVideoUrl = widget.existingData!['video'];
-      _selectedLocation = widget.existingData!['location'];
-    }
+    _nameController = TextEditingController(
+      text: widget.initialData?.name ?? '',
+    );
+
+    _imageUrl = widget.initialData?.image;
+    _videoUrl = widget.initialData?.video;
+
+    _latitude = widget.initialData?.location?.latitude;
+    _longitude = widget.initialData?.location?.longitude;
+    _address = widget.initialData?.location?.address;
   }
 
-  // ✅ Pick images (max 5)
-  Future<void> _pickImages() async {
-    if (_imageFiles.length + _existingImageUrls.length >= 5) {
-      _showError('Maximum 5 images allowed');
-      return;
-    }
-
-    final images = await _picker.pickMultiImage(
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
       maxWidth: 1024,
       maxHeight: 1024,
       imageQuality: 85,
     );
 
-    if (images.isNotEmpty) {
-      final remainingSlots = 5 - (_imageFiles.length + _existingImageUrls.length);
-      final newImages = images.take(remainingSlots).map((xFile) => File(xFile.path)).toList();
-      
+    if (image != null) {
       setState(() {
-        _imageFiles.addAll(newImages);
+        _imageFile = File(image.path);
       });
     }
   }
 
-  // ✅ Remove image
-  void _removeImage(int index, {bool isExisting = false}) {
-    setState(() {
-      if (isExisting) {
-        _existingImageUrls.removeAt(index);
-      } else {
-        _imageFiles.removeAt(index);
-      }
-    });
-  }
-
-  // ✅ Pick video
   Future<void> _pickVideo() async {
-    final video = await _picker.pickVideo(
+    final XFile? video = await _picker.pickVideo(
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
     );
@@ -108,7 +81,6 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
       final file = File(video.path);
       final fileSize = await file.length();
 
-      // ✅ Check size (max 50MB)
       if (fileSize > 50 * 1024 * 1024) {
         _showError('Video size must be less than 50MB');
         return;
@@ -116,38 +88,17 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
 
       setState(() {
         _videoFile = file;
-        _existingVideoUrl = null;
-        _videoController?.dispose();
       });
-
-      // Initialize video player
-      _videoController = VideoPlayerController.file(file);
-      await _videoController!.initialize();
-      setState(() {});
     }
   }
 
-  // ✅ Remove video
-  void _removeVideo() {
-    setState(() {
-      _videoFile = null;
-      _existingVideoUrl = null;
-      _videoController?.dispose();
-      _videoController = null;
-    });
-  }
-
-  // ✅ Pick location
   Future<void> _pickLocation() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationPickerScreen(
-          initialLocation: _selectedLocation != null
-              ? LatLng(
-                  _selectedLocation!['latitude'],
-                  _selectedLocation!['longitude'],
-                )
+        builder: (_) => LocationPickerScreen(
+          initialLocation: _latitude != null && _longitude != null
+              ? LatLng(_latitude!, _longitude!)
               : null,
         ),
       ),
@@ -155,66 +106,60 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
 
     if (result != null) {
       setState(() {
-        _selectedLocation = result;
+        _latitude = result['latitude'];
+        _longitude = result['longitude'];
+        _address = result['address'];
       });
     }
   }
 
-  // ✅ Save restaurant
   Future<void> _saveRestaurant() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedLocation == null) {
-      _showError('Please select restaurant location');
-      return;
-    }
-
-    if (_imageFiles.isEmpty && _existingImageUrls.isEmpty) {
-      _showError('Please add at least one image');
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
-      // ✅ Upload new images
-      List<String> uploadedImageUrls = List.from(_existingImageUrls);
-      
-      if (_imageFiles.isNotEmpty) {
-        setState(() => _isUploading = true);
-        for (var imageFile in _imageFiles) {
-          final url = await _apiService.uploadImage(imageFile);
-          if (url != null) {
-            uploadedImageUrls.add(url);
-          }
+      // Upload image
+      String finalImageUrl = _imageUrl ?? '';
+      if (_imageFile != null) {
+        final uploaded = await _apiService.uploadImage(_imageFile!);
+        if (uploaded == null) {
+          _showError('Failed to upload image');
+          setState(() => _isLoading = false);
+          return;
         }
-        setState(() => _isUploading = false);
+        finalImageUrl = uploaded;
       }
 
-      // ✅ Upload new video
-      String? videoUrl = _existingVideoUrl;
+      // Upload video
+      String? finalVideoUrl = _videoUrl;
       if (_videoFile != null) {
-        setState(() => _isUploading = true);
-        videoUrl = await _apiService.uploadVideo(_videoFile!);
-        setState(() => _isUploading = false);
+        finalVideoUrl = await _apiService.uploadVideo(_videoFile!);
       }
 
-      // ✅ Save restaurant data
-      final restaurantData = {
+      if (finalImageUrl.isEmpty) {
+        _showError('Please select an image');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final data = {
         'name': _nameController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'cuisine': _cuisineController.text.trim(),
-        'images': uploadedImageUrls,
-        'video': videoUrl,
-        'location': _selectedLocation,
+        'image': finalImageUrl,
+        'video': finalVideoUrl,
+        'location': {
+          'latitude': _latitude,
+          'longitude': _longitude,
+          'address': _address,
+        },
       };
 
       bool success;
-      if (widget.restaurantId == null) {
-        success = await _apiService.createRestaurant(restaurantData);
+      if (widget.initialData == null) {
+        success = await _apiService.createRestaurant(data);
       } else {
-        success = await _apiService.updateRestaurant(widget.restaurantId!, restaurantData);
+        success =
+            await _apiService.updateRestaurant(widget.restaurantId!, data);
       }
 
       setState(() => _isLoading = false);
@@ -226,23 +171,23 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Error: ${e.toString()}');
+      _showError(e.toString());
     }
   }
 
-  void _showError(String message) {
+  void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.restaurantId != null;
+    final isEditing = widget.initialData != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Restaurant' : 'Create Restaurant'),
+        title: Text(isEditing ? 'Edit Restaurant' : 'Create Restaurant'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -251,28 +196,32 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ IMAGES SECTION (Max 5)
-                    _buildSectionHeader('Images (Max 5)', Icons.image),
-                    const SizedBox(height: 8),
-                    _buildImagesGrid(),
-                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _imageFile != null
+                            ? Image.file(_imageFile!, fit: BoxFit.cover)
+                            : _imageUrl != null && _imageUrl!.isNotEmpty
+                                ? Image.network(_imageUrl!, fit: BoxFit.cover)
+                                : const Center(
+                                    child: Icon(Icons.add_photo_alternate,
+                                        size: 64),
+                                  ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                    // ✅ VIDEO SECTION
-                    _buildSectionHeader('Video (Optional)', Icons.videocam),
-                    const SizedBox(height: 8),
-                    _buildVideoSection(),
-                    const SizedBox(height: 24),
-
-                    // ✅ LOCATION SECTION
-                    _buildSectionHeader('Location (Required)', Icons.location_on),
-                    const SizedBox(height: 8),
-                    _buildLocationSection(),
-                    const SizedBox(height: 24),
-
-                    // ✅ BASIC INFO
-                    _buildSectionHeader('Restaurant Details', Icons.restaurant),
+                    OutlinedButton.icon(
+                      onPressed: _pickVideo,
+                      icon: const Icon(Icons.video_library),
+                      label: const Text('Add Video (Optional)'),
+                    ),
                     const SizedBox(height: 16),
 
                     TextFormField(
@@ -280,70 +229,34 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Restaurant Name',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.store),
                       ),
-                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
 
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description),
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _cuisineController,
-                      decoration: const InputDecoration(
-                        labelText: 'Cuisine Type',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.fastfood),
+                    Card(
+                      child: ListTile(
+                        leading:
+                            const Icon(Icons.location_on, color: Colors.red),
+                        title: Text(_address ?? 'Select Location'),
+                        trailing:
+                            const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: _pickLocation,
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // ✅ SAVE BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _isUploading ? null : _saveRestaurant,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                        child: _isUploading
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(color: Colors.white),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text('Uploading...', style: TextStyle(color: Colors.white)),
-                                ],
-                              )
-                            : Text(
-                                isEdit ? 'Update Restaurant' : 'Create Restaurant',
-                                style: const TextStyle(fontSize: 18, color: Colors.white),
-                              ),
+                    ElevatedButton(
+                      onPressed: _saveRestaurant,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        isEditing ? 'Update Restaurant' : 'Create Restaurant',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ),
                   ],
@@ -353,205 +266,9 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.green.shade700),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImagesGrid() {
-    final totalImages = _existingImageUrls.length + _imageFiles.length;
-    final canAddMore = totalImages < 5;
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        // Existing images
-        ..._existingImageUrls.asMap().entries.map((entry) {
-          return _buildImageTile(
-            imageUrl: entry.value,
-            onRemove: () => _removeImage(entry.key, isExisting: true),
-          );
-        }),
-        // New images
-        ..._imageFiles.asMap().entries.map((entry) {
-          return _buildImageTile(
-            imageFile: entry.value,
-            onRemove: () => _removeImage(entry.key),
-          );
-        }),
-        // Add button
-        if (canAddMore)
-          GestureDetector(
-            onTap: _pickImages,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_photo_alternate, color: Colors.grey.shade600),
-                  const SizedBox(height: 4),
-                  Text('${totalImages}/5', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildImageTile({String? imageUrl, File? imageFile, required VoidCallback onRemove}) {
-    return Stack(
-      children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            image: DecorationImage(
-              image: imageFile != null ? FileImage(imageFile) : NetworkImage(imageUrl!) as ImageProvider,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: GestureDetector(
-            onTap: onRemove,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVideoSection() {
-    if (_videoFile != null && _videoController != null && _videoController!.value.isInitialized) {
-      return Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: _videoController!.value.aspectRatio,
-            child: VideoPlayer(_videoController!),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: _removeVideo,
-              style: IconButton.styleFrom(backgroundColor: Colors.red),
-            ),
-          ),
-        ],
-      );
-    } else if (_existingVideoUrl != null) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Stack(
-          children: [
-            Center(child: Icon(Icons.play_circle_outline, size: 64, color: Colors.grey.shade600)),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: _removeVideo,
-                style: IconButton.styleFrom(backgroundColor: Colors.red),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return GestureDetector(
-        onTap: _pickVideo,
-        child: Container(
-          height: 200,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.videocam, size: 64, color: Colors.grey.shade600),
-              const SizedBox(height: 8),
-              Text('Tap to add video', style: TextStyle(color: Colors.grey.shade600)),
-              const SizedBox(height: 4),
-              Text('Max 50MB, 60 seconds', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildLocationSection() {
-    return GestureDetector(
-      onTap: _pickLocation,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.location_on, color: Colors.red.shade700),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _selectedLocation != null
-                    ? _selectedLocation!['address']
-                    : 'Tap to select location',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: _selectedLocation != null ? Colors.black87 : Colors.grey.shade600,
-                ),
-              ),
-            ),
-            Icon(Icons.edit, color: Colors.grey.shade600),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
-    _phoneController.dispose();
-    _cuisineController.dispose();
-    _videoController?.dispose();
     super.dispose();
   }
 }

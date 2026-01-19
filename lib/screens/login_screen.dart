@@ -1,4 +1,3 @@
-// lib/screens/login_screen.dart - WITH GRADIENT BACKGROUND
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -7,7 +6,6 @@ import 'home_screen.dart';
 import 'admin_dashboard.dart';
 import 'restaurant_dashboard.dart';
 import 'otp_verification_screen.dart';
-import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,74 +56,59 @@ class _LoginScreenState extends State<LoginScreen>
     _animationController.forward();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  // lib/screens/login_screen.dart - FIXED LINE 88
+// Only showing the fixed _submit() method
 
-    setState(() => _isLoading = true);
+Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_isLogin) {
-      final result = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+  setState(() => _isLoading = true);
 
-      setState(() => _isLoading = false);
+  if (_isLogin) {
+    // LOGIN
+    final result = await _authService.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
 
-      if (result['success']) {
-        final user = result['user'];
-        
-        if (!mounted) return;
-        
-        if (user.role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const AdminDashboard()),
-          );
-        } else if (user.role == 'restaurant') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => RestaurantDashboard(user: user)),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
-          );
-        }
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      final user = result['user'];
+      
+      print('🔐 Login Success');
+      print('   User Role: ${user.role}');
+      
+      if (!mounted) return;
+      
+      if (user.role == 'admin') {
+        print('✅ Navigating to Admin Dashboard');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboard()),
+        );
+      } else if (user.role == 'restaurant') {
+        print('✅ Navigating to Restaurant Dashboard');
+        // ✅ FIXED: Pass user parameter
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => RestaurantDashboard(user: user)),
+        );
       } else {
-        if (result['requiresOTP'] == true) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(
-                userId: result['userId'],
-                email: _emailController.text.trim(),
-              ),
-            ),
-          );
-        } else {
-          _showSnackBar(result['message'], Colors.red);
-        }
+        print('✅ Navigating to Customer Home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+        );
       }
     } else {
-      final result = await _authService.register(
-        _nameController.text.trim(),
-        _emailController.text.trim(),
-        _passwordController.text,
-        _phoneController.text.trim(),
-        _selectedRole,
-      );
-
-      setState(() => _isLoading = false);
-
-      if (result['success']) {
+      if (result['requiresOTP'] == true) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationScreen(
               userId: result['userId'],
               email: _emailController.text.trim(),
-              otp: result['otp'],
             ),
           ),
         );
@@ -133,7 +116,34 @@ class _LoginScreenState extends State<LoginScreen>
         _showSnackBar(result['message'], Colors.red);
       }
     }
+  } else {
+    // REGISTER
+    final result = await _authService.register(
+      _nameController.text.trim(),
+      _emailController.text.trim(),
+      _passwordController.text,
+      _phoneController.text.trim(),
+      _selectedRole,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OTPVerificationScreen(
+            userId: result['userId'],
+            email: _emailController.text.trim(),
+            otp: result['otp'],
+          ),
+        ),
+      );
+    } else {
+      _showSnackBar(result['message'], Colors.red);
+    }
   }
+}
 
   void _showSnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -153,171 +163,137 @@ class _LoginScreenState extends State<LoginScreen>
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark 
-            ? themeProvider.darkGradient 
-            : themeProvider.lightGradient,
+          gradient:
+              isDark ? themeProvider.darkGradient : themeProvider.lightGradient,
         ),
         child: SafeArea(
-          child: Stack(
-            children: [
-              // Theme Toggle Button
-              Positioned(
-                top: 16,
-                right: 16,
-                child: IconButton(
-                  icon: Icon(
-                    isDark ? Icons.light_mode : Icons.dark_mode,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
-                  },
-                ),
-              ),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.restaurant_menu,
+                                size: 64, color: Colors.green.shade700),
+                            const SizedBox(height: 24),
 
-              // Main Content
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.restaurant_menu,
-                                    size: 64, color: Colors.green.shade700),
-                                const SizedBox(height: 24),
+                            Text(
+                              _isLogin ? 'Welcome Back' : 'Create Account',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
 
-                                Text(
-                                  _isLogin ? 'Welcome Back' : 'Create Account',
-                                  style: const TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            if (!_isLogin)
+                              _field(
+                                  _nameController, 'Name', Icons.person),
+
+                            _field(
+                              _emailController,
+                              'Email',
+                              Icons.email,
+                              type: TextInputType.emailAddress,
+                            ),
+
+                            if (!_isLogin)
+                              _field(
+                                _phoneController,
+                                'Phone',
+                                Icons.phone,
+                                type: TextInputType.phone,
+                                max: 10,
+                              ),
+
+                            _field(
+                              _passwordController,
+                              'Password',
+                              Icons.lock,
+                              obscure: _obscurePassword,
+                              suffix: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
                                 ),
-                                const SizedBox(height: 24),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                            ),
 
-                                if (!_isLogin)
-                                  _field(_nameController, 'Name', Icons.person),
-
-                                _field(
-                                  _emailController,
-                                  'Email',
-                                  Icons.email,
-                                  type: TextInputType.emailAddress,
-                                ),
-
-                                if (!_isLogin)
-                                  _field(
-                                    _phoneController,
-                                    'Phone',
-                                    Icons.phone,
-                                    type: TextInputType.phone,
-                                    max: 10,
+                            if (!_isLogin) ...[
+                              const SizedBox(height: 16),
+                              DropdownButtonFormField<String>(
+                                value: _selectedRole,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'customer',
+                                    child: Text('Customer'),
                                   ),
-
-                                _field(
-                                  _passwordController,
-                                  'Password',
-                                  Icons.lock,
-                                  obscure: _obscurePassword,
-                                  suffix: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-                                ),
-
-                                if (!_isLogin) ...[
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade400),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: DropdownButtonFormField<String>(
-                                      value: _selectedRole,
-                                      decoration: const InputDecoration(
-                                        border: InputBorder.none,
-                                        prefixIcon: Icon(Icons.person_outline),
-                                      ),
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'customer',
-                                          child: Text('Customer'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'restaurant',
-                                          child: Text('Restaurant Owner'),
-                                        ),
-                                      ],
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _selectedRole = value!;
-                                        });
-                                      },
-                                    ),
+                                  DropdownMenuItem(
+                                    value: 'restaurant',
+                                    child: Text('Restaurant Owner'),
                                   ),
                                 ],
-
-                                const SizedBox(height: 24),
-
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : _submit,
-                                    child: _isLoading
-                                        ? const CircularProgressIndicator(color: Colors.white)
-                                        : Text(
-                                            _isLogin ? 'Login' : 'Register',
-                                            style: const TextStyle(fontSize: 16),
-                                          ),
-                                  ),
+                                onChanged: (v) =>
+                                    setState(() => _selectedRole = v!),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.person_outline),
                                 ),
+                              ),
+                            ],
 
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isLogin = !_isLogin;
-                                      _selectedRole = 'customer';
-                                    });
-                                  },
-                                  child: Text(
-                                    _isLogin
-                                        ? 'Create account'
-                                        : 'Already have account',
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 24),
+
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _submit,
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white)
+                                    : Text(_isLogin ? 'Login' : 'Register'),
+                              ),
                             ),
-                          ),
+
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isLogin = !_isLogin;
+                                  _selectedRole = 'customer';
+                                });
+                              },
+                              child: Text(
+                                _isLogin
+                                    ? 'Create account'
+                                    : 'Already have account',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

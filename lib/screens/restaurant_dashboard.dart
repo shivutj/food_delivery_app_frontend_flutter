@@ -1,8 +1,12 @@
-// lib/screens/restaurant_dashboard.dart - FULL RESTAURANT MANAGEMENT
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../models/user.dart';
+import '../models/restaurant.dart'; // ✅ ADDED
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../providers/theme_provider.dart';
+
 import 'admin_orders_screen.dart';
 import 'admin_menu_screen.dart';
 import 'analytics_dashboard_screen.dart';
@@ -21,8 +25,8 @@ class RestaurantDashboard extends StatefulWidget {
 class _RestaurantDashboardState extends State<RestaurantDashboard> {
   final AuthService _authService = AuthService();
   final ApiService _apiService = ApiService();
-  
-  Map<String, dynamic>? _myRestaurant;
+
+  Restaurant? _myRestaurant; // ✅ FIXED
   bool _isLoading = true;
 
   @override
@@ -32,13 +36,19 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   }
 
   Future<void> _loadRestaurant() async {
-    setState(() => _isLoading = true);
-    final restaurant = await _apiService.getMyRestaurant();
-    setState(() {
-      _myRestaurant = restaurant;
-      _isLoading = false;
-    });
-  }
+  setState(() => _isLoading = true);
+  final restaurantData = await _apiService.getMyRestaurant();
+  
+  setState(() {
+    // ✅ FIX: restaurantData is already a Map, not a Restaurant
+    if (restaurantData != null) {
+      _myRestaurant = Restaurant.fromJson(restaurantData); // This is correct
+    } else {
+      _myRestaurant = null;
+    }
+    _isLoading = false;
+  });
+}
 
   void _logout() {
     showDialog(
@@ -56,7 +66,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
               await _authService.logout();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,
               );
             },
@@ -71,9 +81,9 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RestaurantFormScreen(
-          restaurantId: _myRestaurant?['_id'],
-          existingData: _myRestaurant,
+        builder: (_) => RestaurantFormScreen(
+          restaurantId: _myRestaurant?.id, // ✅ FIXED
+          initialData: _myRestaurant,       // ✅ FIXED
         ),
       ),
     );
@@ -85,18 +95,26 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    // ✅ NO RESTAURANT YET
+    // ❌ NO RESTAURANT
     if (_myRestaurant == null) {
       return Scaffold(
         appBar: AppBar(
           title: Text('${widget.user.name} - Restaurant Owner'),
           actions: [
+            IconButton(
+              icon: Icon(
+                themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              ),
+              onPressed: themeProvider.toggleTheme,
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: _logout,
@@ -125,10 +143,16 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                 ElevatedButton.icon(
                   onPressed: _createOrEditRestaurant,
                   icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text('Create Restaurant', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Create Restaurant',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ],
@@ -138,31 +162,35 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
       );
     }
 
-    // ✅ HAS RESTAURANT - SHOW DASHBOARD
+    // ✅ HAS RESTAURANT
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _myRestaurant!['name'],
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Restaurant Owner',
+              _myRestaurant!.name, // ✅ FIXED
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.normal,
-                color: Colors.white70,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const Text(
+              'Restaurant Owner',
+              style: TextStyle(fontSize: 13, color: Colors.white70),
             ),
           ],
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+            onPressed: themeProvider.toggleTheme,
+          ),
+          IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _createOrEditRestaurant,
-            tooltip: 'Edit Restaurant',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -177,18 +205,12 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
           children: [
             const Text(
               'Restaurant Management',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Manage your restaurant analytics, menu, and orders',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
             Expanded(
@@ -197,7 +219,6 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
                 children: [
-                  // ✅ ANALYTICS
                   _buildDashboardCard(
                     icon: Icons.analytics,
                     title: 'Analytics',
@@ -207,12 +228,11 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AnalyticsDashboardScreen(),
+                          builder: (_) => const AnalyticsDashboardScreen(),
                         ),
                       );
                     },
                   ),
-                  // ✅ MANAGE MENU
                   _buildDashboardCard(
                     icon: Icons.restaurant_menu,
                     title: 'Manage Menu',
@@ -222,12 +242,11 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AdminMenuScreen(),
+                          builder: (_) => const AdminMenuScreen(),
                         ),
                       );
                     },
                   ),
-                  // ✅ MANAGE ORDERS
                   _buildDashboardCard(
                     icon: Icons.shopping_bag,
                     title: 'Manage Orders',
@@ -237,7 +256,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AdminOrdersScreen(),
+                          builder: (_) => const AdminOrdersScreen(),
                         ),
                       );
                     },
@@ -281,10 +300,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
             ],

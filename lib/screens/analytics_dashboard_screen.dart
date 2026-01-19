@@ -1,7 +1,9 @@
-// lib/screens/analytics_dashboard_screen.dart - BEAUTIFUL ANALYTICS
+// lib/screens/analytics_dashboard_screen.dart - WITH DARK MODE
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
+import '../providers/theme_provider.dart';
 
 class AnalyticsDashboardScreen extends StatefulWidget {
   const AnalyticsDashboardScreen({super.key});
@@ -38,6 +40,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Access theme provider
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -82,6 +87,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               ),
             ),
             actions: [
+              // ✅ DARK MODE TOGGLE
+              IconButton(
+                icon: Icon(
+                  themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                  color: Colors.white,
+                ),
+                onPressed: () => themeProvider.toggleTheme(),
+                tooltip: themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white),
                 onPressed: _loadAnalytics,

@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart - WITH THEME TOGGLE & GRADIENT
+// lib/screens/home_screen.dart - FIXED WITH IMAGE PREVIEW & DARK MODE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,8 +8,8 @@ import '../models/restaurant.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../providers/cart_provider.dart';
-import '../providers/theme_provider.dart'; // ✅ Import
-import 'menu_screen.dart';
+import '../providers/theme_provider.dart'; // ✅ Import theme provider
+import 'restaurant_detail_screen.dart'; // ✅ Changed from menu_screen
 import 'cart_screen.dart';
 import 'orders_screen.dart';
 import 'login_screen.dart';
@@ -87,8 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Access theme provider
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
       body: CustomScrollView(
@@ -100,9 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
-                  gradient: isDark 
-                    ? themeProvider.darkGradient 
-                    : themeProvider.lightGradient,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.green.shade400, Colors.green.shade700],
+                  ),
                 ),
                 child: SafeArea(
                   child: Padding(
@@ -134,18 +136,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             actions: [
-              // ✅ Theme Toggle
+              // ✅ DARK MODE TOGGLE
               IconButton(
                 icon: Icon(
-                  isDark ? Icons.light_mode : Icons.dark_mode,
+                  themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
                   color: Colors.white,
                 ),
-                onPressed: () {
-                  themeProvider.toggleTheme();
-                },
-                tooltip: isDark ? 'Light Mode' : 'Dark Mode',
+                onPressed: () => themeProvider.toggleTheme(),
+                tooltip: themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
               ),
-              
               // Cart Icon
               Consumer<CartProvider>(
                 builder: (context, cart, child) {
@@ -189,8 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              
-              // Orders History
+              // Orders
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.white),
                 onPressed: () {
@@ -200,7 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              
               // Profile
               IconButton(
                 icon: const Icon(Icons.account_circle, color: Colors.white),
@@ -211,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              
               // Logout
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.white),
@@ -229,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   hintText: 'Search restaurants...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
-                  fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                  fillColor: Theme.of(context).cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -240,13 +236,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           _isLoading
-              ? SliverToBoxAdapter(
-                  child: _buildShimmerLoading(),
-                )
+              ? SliverToBoxAdapter(child: _buildShimmerLoading())
               : _filteredRestaurants.isEmpty
-                  ? SliverToBoxAdapter(
-                      child: _buildEmptyState(),
-                    )
+                  ? SliverToBoxAdapter(child: _buildEmptyState())
                   : SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       sliver: SliverList(
@@ -265,16 +257,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRestaurantCard(Restaurant restaurant) {
+    // ✅ FIXED: Use primary image from restaurant
+    final imageUrl = restaurant.primaryImage;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
+          // ✅ FIXED: Navigate to RestaurantDetailScreen instead of MenuScreen
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MenuScreen(restaurant: restaurant),
+              builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
             ),
           );
         },
@@ -282,10 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ FIXED: Display restaurant image
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: CachedNetworkImage(
-                imageUrl: restaurant.primaryImage,
+                imageUrl: imageUrl,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -334,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'View Menu',
+                          'View Details',
                           style: TextStyle(
                             color: Colors.green.shade700,
                             fontWeight: FontWeight.w600,

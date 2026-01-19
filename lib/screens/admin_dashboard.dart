@@ -1,7 +1,9 @@
-// lib/screens/admin_dashboard.dart - ADMIN ANALYTICS ONLY
+// lib/screens/admin_dashboard.dart - WITH DARK MODE
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
+import '../providers/theme_provider.dart';
 import 'analytics_dashboard_screen.dart';
 import 'login_screen.dart';
 
@@ -115,6 +117,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Access theme provider
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -142,6 +147,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
         actions: [
+          // ✅ DARK MODE TOGGLE
+          IconButton(
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+            onPressed: () => themeProvider.toggleTheme(),
+            tooltip: themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
+          ),
           if (_currentUser != null)
             IconButton(
               icon: const Icon(Icons.account_circle),
@@ -177,7 +190,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 32),
 
-            // ✅ ONLY ANALYTICS - NO ORDERS/MENU MANAGEMENT
+            // Analytics Card
             Center(
               child: Card(
                 elevation: 8,
@@ -239,7 +252,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 32),
 
-            // ✅ INFO BOX
+            // Info Box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
