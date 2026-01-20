@@ -1,15 +1,18 @@
-// lib/models/restaurant.dart - FIXED
+// lib/models/restaurant.dart - WITH DINE-IN SUPPORT
 class Restaurant {
   final String id;
   final String name;
-  final String image; // ✅ Keep old field for backward compatibility
-  final List<String> images; // ✅ New field
+  final String image;
+  final List<String> images;
   final String? video;
   final double rating;
-  final Location? location; // ✅ Changed from RestaurantLocation
+  final Location? location;
   final String? description;
   final String? phone;
   final String? cuisine;
+  final bool dineInAvailable;      // ✅ NEW
+  final String? operatingHours;    // ✅ NEW
+  final String? bookingPhone;      // ✅ NEW
 
   Restaurant({
     required this.id,
@@ -22,16 +25,17 @@ class Restaurant {
     this.description,
     this.phone,
     this.cuisine,
+    this.dineInAvailable = true,  // ✅ Default to true
+    this.operatingHours,
+    this.bookingPhone,
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
-    // ✅ Handle both old and new image formats
     List<String> imagesList = [];
     if (json['images'] != null && json['images'] is List) {
       imagesList = List<String>.from(json['images']);
     }
     
-    // ✅ Fallback to old single image field
     String singleImage = json['image'] ?? 'https://via.placeholder.com/400x300?text=No+Image';
     if (imagesList.isEmpty && singleImage.isNotEmpty) {
       imagesList = [singleImage];
@@ -40,7 +44,7 @@ class Restaurant {
     return Restaurant(
       id: json['_id'] ?? '',
       name: json['name'] ?? '',
-      image: singleImage, // ✅ Keep for backward compatibility
+      image: singleImage,
       images: imagesList,
       video: json['video'],
       rating: (json['rating'] ?? 0).toDouble(),
@@ -50,18 +54,26 @@ class Restaurant {
       description: json['description'],
       phone: json['phone'],
       cuisine: json['cuisine'],
+      dineInAvailable: json['dineInAvailable'] ?? true,  // ✅ NEW
+      operatingHours: json['operatingHours'],            // ✅ NEW
+      bookingPhone: json['bookingPhone'],                // ✅ NEW
     );
   }
 
-  // ✅ Helper: Get primary image
   String get primaryImage {
     if (images.isNotEmpty) return images.first;
     if (image.isNotEmpty) return image;
     return 'https://via.placeholder.com/400x300?text=No+Image';
   }
+
+  // ✅ NEW: Check if location is available for directions
+  bool get hasLocation {
+    return location != null && 
+           location!.latitude != 0 && 
+           location!.longitude != 0;
+  }
 }
 
-// ✅ Renamed from RestaurantLocation to Location
 class Location {
   final double latitude;
   final double longitude;
