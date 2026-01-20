@@ -1,4 +1,4 @@
-// lib/screens/restaurant_detail_screen.dart - WITH DINE-IN & MAP DIRECTIONS
+// lib/screens/restaurant_detail_screen.dart - COMPLETE WITH ALL FEATURES
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
@@ -6,6 +6,9 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import 'menu_screen.dart';
+import 'table_booking_screen.dart';
+import 'restaurant_reviews_screen.dart';
+import 'restaurant_offers_screen.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -51,7 +54,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     });
   }
 
-  // ✅ NEW: Open Google Maps for directions
   Future<void> _openDirections() async {
     if (!widget.restaurant.hasLocation) {
       _showMessage('Location not available for this restaurant', Colors.red);
@@ -61,7 +63,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     final lat = widget.restaurant.location!.latitude;
     final lng = widget.restaurant.location!.longitude;
     
-    // Google Maps URL (works on both iOS and Android)
     final url = Uri.parse(
       'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'
     );
@@ -77,7 +78,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     }
   }
 
-  // ✅ NEW: Call restaurant for booking
   Future<void> _callRestaurant() async {
     final phone = widget.restaurant.bookingPhone ?? widget.restaurant.phone;
     
@@ -219,24 +219,35 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                           ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Icon(Icons.star, color: Colors.amber.shade700, size: 24),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.restaurant.rating.toString(),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.amber.shade600, Colors.amber.shade400],
                           ),
-                        ],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: Colors.white, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.restaurant.rating.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // ✅ NEW: Dine-In Badge
+                  // Dine-In Badge
                   if (widget.restaurant.dineInAvailable)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -262,10 +273,72 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
+
+                  // Quick Action Buttons Grid
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    children: [
+                      _buildQuickAction(
+                        icon: Icons.call,
+                        label: 'Call',
+                        color: Colors.blue,
+                        onTap: _callRestaurant,
+                      ),
+                      _buildQuickAction(
+                        icon: Icons.directions,
+                        label: 'Directions',
+                        color: Colors.green,
+                        onTap: widget.restaurant.hasLocation ? _openDirections : null,
+                      ),
+                      _buildQuickAction(
+                        icon: Icons.local_offer,
+                        label: 'Offers',
+                        color: Colors.orange,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RestaurantOffersScreen(
+                                restaurant: widget.restaurant,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildQuickAction(
+                        icon: Icons.star_rate,
+                        label: 'Reviews',
+                        color: Colors.amber,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RestaurantReviewsScreen(
+                                restaurant: widget.restaurant,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
                   // Description
                   if (widget.restaurant.description?.isNotEmpty ?? false) ...[
+                    const Text(
+                      'About',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       widget.restaurant.description!,
                       style: TextStyle(
@@ -274,121 +347,72 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                   ],
 
-                  // ✅ NEW: Operating Hours
-                  if (widget.restaurant.operatingHours != null) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.access_time, color: Colors.blue.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.restaurant.operatingHours!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
+                  // Info Cards
+                  if (widget.restaurant.operatingHours != null)
+                    _buildInfoCard(
+                      Icons.access_time,
+                      'Operating Hours',
+                      widget.restaurant.operatingHours!,
+                      Colors.blue,
                     ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Cuisine
-                  if (widget.restaurant.cuisine?.isNotEmpty ?? false) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.fastfood, color: Colors.green.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.restaurant.cuisine!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
+                  if (widget.restaurant.cuisine?.isNotEmpty ?? false)
+                    _buildInfoCard(
+                      Icons.fastfood,
+                      'Cuisine',
+                      widget.restaurant.cuisine!,
+                      Colors.green,
                     ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Phone
-                  if (widget.restaurant.phone?.isNotEmpty ?? false) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.phone, color: Colors.green.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.restaurant.phone!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
+                  if (widget.restaurant.location != null)
+                    _buildInfoCard(
+                      Icons.location_on,
+                      'Location',
+                      widget.restaurant.location!.address,
+                      Colors.red,
                     ),
-                    const SizedBox(height: 12),
-                  ],
+                  const SizedBox(height: 24),
 
-                  // Location
-                  if (widget.restaurant.location != null) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.red.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.restaurant.location!.address,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ✅ NEW: Action Buttons Row
-                  Row(
-                    children: [
-                      // Get Directions Button
-                      if (widget.restaurant.hasLocation)
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _openDirections,
-                            icon: const Icon(Icons.directions),
-                            label: const Text('Directions'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.blue.shade600, width: 2),
-                              foregroundColor: Colors.blue.shade600,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                  // Main Action Buttons
+                  if (widget.restaurant.dineInAvailable)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TableBookingScreen(
+                                restaurant: widget.restaurant,
                               ),
                             ),
+                          );
+                        },
+                        icon: const Icon(Icons.event_seat, color: Colors.white),
+                        label: const Text(
+                          'Book a Table',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                      
-                      // Call for Booking Button (if dine-in available)
-                      if (widget.restaurant.dineInAvailable && 
-                          (widget.restaurant.bookingPhone != null || widget.restaurant.phone != null)) ...[
-                        if (widget.restaurant.hasLocation) const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _callRestaurant,
-                            icon: const Icon(Icons.call),
-                            label: const Text('Book Table'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.green.shade600, width: 2),
-                              foregroundColor: Colors.green.shade600,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade600,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                      ),
+                    ),
+                  if (widget.restaurant.dineInAvailable) const SizedBox(height: 12),
 
-                  // View Menu Button
                   SizedBox(
                     width: double.infinity,
                     height: 56,
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -397,13 +421,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
+                      icon: const Icon(Icons.restaurant_menu, color: Colors.white),
+                      label: const Text(
                         'View Menu & Order',
                         style: TextStyle(
                           fontSize: 18,
@@ -411,10 +430,107 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                           color: Colors.white,
                         ),
                       ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    final isDisabled = onTap == null;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDisabled ? Colors.grey.shade100 : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDisabled ? Colors.grey.shade300 : color.withOpacity(0.3),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isDisabled ? Colors.grey.shade400 : color,
+              size: 28,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDisabled ? Colors.grey.shade400 : color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String title, String content, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  content,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
