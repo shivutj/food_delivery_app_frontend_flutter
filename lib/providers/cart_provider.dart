@@ -1,4 +1,4 @@
-// lib/providers/cart_provider.dart - OPTIMIZED VERSION
+// lib/providers/cart_provider.dart - FIXED EMPTY CART ON LOGIN
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -40,7 +40,6 @@ class CartProvider with ChangeNotifier {
   bool _isLoaded = false;
   Timer? _saveTimer;
 
-  // Debounce duration for saving
   static const Duration _saveDuration = Duration(milliseconds: 500);
 
   Map<String, CartItem> get items => _items;
@@ -58,7 +57,7 @@ class CartProvider with ChangeNotifier {
     return total;
   }
 
-  // Load cart from storage (optimized - only once)
+  // ✅ FIX: Load cart ONLY if data exists and is valid
   Future<void> loadCart() async {
     if (_isLoaded) return;
     
@@ -66,23 +65,42 @@ class CartProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final cartJson = prefs.getString('cart');
       
-      if (cartJson != null) {
-        final Map<String, dynamic> cartData = jsonDecode(cartJson);
-        _items.clear();
-        
-        cartData.forEach((key, value) {
-          _items[key] = CartItem.fromJson(value);
-        });
+      // ✅ Clear items first
+      _items.clear();
+      
+      // ✅ Only load if cart data exists
+      if (cartJson != null && cartJson.isNotEmpty && cartJson != '{}') {
+        try {
+          final Map<String, dynamic> cartData = jsonDecode(cartJson);
+          
+          // ✅ Only add items if cartData is not empty
+          if (cartData.isNotEmpty) {
+            cartData.forEach((key, value) {
+              try {
+                _items[key] = CartItem.fromJson(value);
+              } catch (e) {
+                print('⚠️ Error loading cart item $key: $e');
+              }
+            });
+          }
+        } catch (e) {
+          print('⚠️ Error parsing cart data: $e');
+          // Clear corrupted cart data
+          await prefs.remove('cart');
+        }
       }
       
       _isLoaded = true;
+      print('✅ Cart loaded: ${_items.length} items');
       notifyListeners();
     } catch (e) {
-      print('Error loading cart: $e');
+      print('❌ Error loading cart: $e');
+      _items.clear();
+      _isLoaded = true;
+      notifyListeners();
     }
   }
 
-  // Debounced save to prevent excessive writes
   void _debouncedSave() {
     _saveTimer?.cancel();
     _saveTimer = Timer(_saveDuration, _saveCart);
@@ -91,14 +109,21 @@ class CartProvider with ChangeNotifier {
   Future<void> _saveCart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cartData = _items.map((key, value) => MapEntry(key, value.toJson()));
-      await prefs.setString('cart', jsonEncode(cartData));
+      
+      if (_items.isEmpty) {
+        // ✅ Remove cart data if empty
+        await prefs.remove('cart');
+        print('✅ Cart cleared from storage');
+      } else {
+        final cartData = _items.map((key, value) => MapEntry(key, value.toJson()));
+        await prefs.setString('cart', jsonEncode(cartData));
+        print('✅ Cart saved: ${_items.length} items');
+      }
     } catch (e) {
-      print('Error saving cart: $e');
+      print('❌ Error saving cart: $e');
     }
   }
 
-  // Optimized add item - immediate UI update, debounced save
   void addItem(MenuItem menuItem) {
     if (_items.containsKey(menuItem.id)) {
       _items[menuItem.id]!.quantity++;
@@ -109,14 +134,12 @@ class CartProvider with ChangeNotifier {
     _debouncedSave();
   }
 
-  // Optimized remove item
   void removeItem(String menuItemId) {
     _items.remove(menuItemId);
     notifyListeners();
     _debouncedSave();
   }
 
-  // Optimized update quantity
   void updateQuantity(String menuItemId, int quantity) {
     if (_items.containsKey(menuItemId)) {
       if (quantity > 0) {
@@ -129,14 +152,14 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  // Clear cart (immediate save)
+  // ✅ FIX: Clear cart properly with immediate save
   Future<void> clearCart() async {
     _items.clear();
     notifyListeners();
-    await _saveCart(); // Immediate save for critical action
+    await _saveCart();
+    print('🗑️ Cart cleared completely');
   }
 
-  // Get order items in API format
   List<Map<String, dynamic>> getOrderItems() {
     return _items.values.map((cartItem) {
       return {

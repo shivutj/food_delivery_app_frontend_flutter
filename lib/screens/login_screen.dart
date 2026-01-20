@@ -1,8 +1,10 @@
-// lib/screens/login_screen.dart - MODERN BEAUTIFUL UI
+// lib/screens/login_screen.dart - FIXED REGISTRATION FORM
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../providers/theme_provider.dart';
+import '../providers/cart_provider.dart';
 import 'home_screen.dart';
 import 'admin_dashboard.dart';
 import 'restaurant_dashboard.dart';
@@ -24,11 +26,13 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _idNumberController = TextEditingController();
 
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _selectedRole = 'customer';
+  String _selectedIdType = 'pan';
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -71,6 +75,30 @@ class _LoginScreenState extends State<LoginScreen>
     _animationController.forward();
   }
 
+  String? _validateIdNumber(String? value) {
+    if (_selectedRole != 'restaurant') return null;
+    
+    if (value == null || value.trim().isEmpty) {
+      return 'ID is required for restaurant owners';
+    }
+
+    final trimmed = value.trim().toUpperCase();
+
+    if (_selectedIdType == 'pan') {
+      final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
+      if (!panRegex.hasMatch(trimmed)) {
+        return 'Invalid PAN format (e.g., ABCDE1234F)';
+      }
+    } else {
+      final aadhaarRegex = RegExp(r'^[0-9]{12}$');
+      if (!aadhaarRegex.hasMatch(value.trim())) {
+        return 'Aadhaar must be 12 digits';
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -87,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen>
       if (result['success']) {
         final user = result['user'];
         
+        // ✅ CLEAR CART ON LOGIN
         if (!mounted) return;
+        await Provider.of<CartProvider>(context, listen: false).clearCart();
         
         if (user.role == 'admin') {
           Navigator.pushReplacement(
@@ -127,6 +157,8 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
         _phoneController.text.trim(),
         _selectedRole,
+        idType: _selectedRole == 'restaurant' ? _selectedIdType : null,
+        idNumber: _selectedRole == 'restaurant' ? _idNumberController.text.trim() : null,
       );
 
       setState(() => _isLoading = false);
@@ -180,9 +212,9 @@ class _LoginScreenState extends State<LoginScreen>
                     const Color(0xFF0F3460),
                   ]
                 : [
-                    const Color(0xFFFF6B6B), // Coral red
-                    const Color(0xFFFFE66D), // Warm yellow
-                    const Color(0xFFFF6B9D), // Pink
+                    const Color(0xFFFF6B6B),
+                    const Color(0xFFFFE66D),
+                    const Color(0xFFFF6B9D),
                   ],
           ),
         ),
@@ -193,7 +225,6 @@ class _LoginScreenState extends State<LoginScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo & Title Animation
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: ScaleTransition(
@@ -251,7 +282,6 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   const SizedBox(height: 40),
 
-                  // Form Card
                   SlideTransition(
                     position: _slideAnimation,
                     child: FadeTransition(
@@ -274,7 +304,6 @@ class _LoginScreenState extends State<LoginScreen>
                             key: _formKey,
                             child: Column(
                               children: [
-                                // Tab Selector
                                 Container(
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade100,
@@ -297,7 +326,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                                 const SizedBox(height: 28),
 
-                                // Form Fields
                                 if (!_isLogin)
                                   _buildTextField(
                                     controller: _nameController,
@@ -374,16 +402,131 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                         ],
                                         onChanged: (value) {
-                                          setState(() => _selectedRole = value!);
+                                          setState(() {
+                                            _selectedRole = value!;
+                                            _idNumberController.clear();
+                                          });
                                         },
                                       ),
                                     ),
                                   ),
+
+                                  // ✅ FIX: ID VERIFICATION SECTION - ONLY SHOW FOR RESTAURANT
+                                  if (_selectedRole == 'restaurant') ...[
+                                    const SizedBox(height: 24),
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blue.shade200),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.verified_user, color: Colors.blue.shade700, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'ID Verification Required',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blue.shade900,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Restaurant owners must verify with PAN or Aadhaar',
+                                            style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: RadioListTile<String>(
+                                            title: const Text('PAN Card', style: TextStyle(fontSize: 14)),
+                                            value: 'pan',
+                                            groupValue: _selectedIdType,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _selectedIdType = value!;
+                                                _idNumberController.clear();
+                                              });
+                                            },
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: RadioListTile<String>(
+                                            title: const Text('Aadhaar', style: TextStyle(fontSize: 14)),
+                                            value: 'aadhaar',
+                                            groupValue: _selectedIdType,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _selectedIdType = value!;
+                                                _idNumberController.clear();
+                                              });
+                                            },
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+
+                                    TextFormField(
+                                      controller: _idNumberController,
+                                      decoration: InputDecoration(
+                                        labelText: _selectedIdType == 'pan' ? 'PAN Number' : 'Aadhaar Number',
+                                        hintText: _selectedIdType == 'pan' ? 'ABCDE1234F' : '123456789012',
+                                        prefixIcon: const Icon(Icons.credit_card),
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        counterText: '',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(color: Colors.grey.shade200),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(color: Color(0xFF4ECDC4), width: 2),
+                                        ),
+                                      ),
+                                      textCapitalization: _selectedIdType == 'pan' 
+                                          ? TextCapitalization.characters 
+                                          : TextCapitalization.none,
+                                      maxLength: _selectedIdType == 'pan' ? 10 : 12,
+                                      inputFormatters: _selectedIdType == 'pan'
+                                          ? [
+                                              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                                              TextInputFormatter.withFunction((oldValue, newValue) {
+                                                return newValue.copyWith(
+                                                  text: newValue.text.toUpperCase(),
+                                                );
+                                              }),
+                                            ]
+                                          : [FilteringTextInputFormatter.digitsOnly],
+                                      validator: _validateIdNumber,
+                                    ),
+                                  ],
                                 ],
 
                                 const SizedBox(height: 28),
 
-                                // Submit Button
                                 SizedBox(
                                   width: double.infinity,
                                   height: 56,
@@ -396,7 +539,6 @@ class _LoginScreenState extends State<LoginScreen>
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
-                                      shadowColor: const Color(0xFFFF6B6B).withOpacity(0.5),
                                     ),
                                     child: _isLoading
                                         ? const SizedBox(
@@ -420,7 +562,6 @@ class _LoginScreenState extends State<LoginScreen>
 
                                 const SizedBox(height: 20),
 
-                                // Toggle Login/Signup
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -438,6 +579,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         setState(() {
                                           _isLogin = !_isLogin;
                                           _selectedRole = 'customer';
+                                          _idNumberController.clear();
                                         });
                                       },
                                       style: TextButton.styleFrom(
@@ -579,6 +721,7 @@ class _LoginScreenState extends State<LoginScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+    _idNumberController.dispose();
     super.dispose();
   }
 }

@@ -1,4 +1,4 @@
-// lib/services/auth_service.dart - COMPLETE WITH OTP SUPPORT
+// lib/services/auth_service.dart - COMPLETE WITH OTP SUPPORT (FIXED)
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,7 +29,6 @@ class AuthService {
           'user': User.fromJson(data['user']),
         };
       } else if (response.statusCode == 403) {
-        // User not verified
         final data = jsonDecode(response.body);
         return {
           'success': false,
@@ -52,16 +51,17 @@ class AuthService {
     }
   }
 
-  // REGISTER with OTP
+  // REGISTER with OTP + ID SUPPORT (FIXED)
   Future<Map<String, dynamic>> register(
     String name,
     String email,
     String password,
     String phone,
-    String role,
-  ) async {
+    String role, {
+    String? idType,
+    String? idNumber,
+  }) async {
     try {
-      // Frontend validation
       if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
         return {
           'success': false,
@@ -69,16 +69,24 @@ class AuthService {
         };
       }
 
+      final Map<String, dynamic> body = {
+        'name': name,
+        'email': email,
+        'password': password,
+        'phone': phone,
+        'role': role,
+      };
+
+      // ✅ ADD ONLY FOR RESTAURANT OWNERS
+      if (role == 'restaurant') {
+        body['idType'] = idType;
+        body['idNumber'] = idNumber;
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-          'phone': phone,
-          'role': role,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 201) {
@@ -87,7 +95,7 @@ class AuthService {
           'success': true,
           'message': data['message'],
           'userId': data['userId'],
-          'otp': data['otp'], // MVP: OTP returned
+          'otp': data['otp'], // MVP OTP
         };
       } else {
         final error = jsonDecode(response.body);
@@ -143,9 +151,7 @@ class AuthService {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/resend-otp'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-        }),
+        body: jsonEncode({'userId': userId}),
       );
 
       if (response.statusCode == 200) {
@@ -153,7 +159,7 @@ class AuthService {
         return {
           'success': true,
           'message': data['message'],
-          'otp': data['otp'], // MVP: OTP returned
+          'otp': data['otp'],
         };
       } else {
         final error = jsonDecode(response.body);
@@ -170,7 +176,7 @@ class AuthService {
     }
   }
 
-  // TOKEN AND USER DATA STORAGE
+  // STORAGE
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
