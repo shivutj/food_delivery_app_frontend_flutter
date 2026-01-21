@@ -1,7 +1,8 @@
-// lib/screens/table_booking_screen.dart - COMPLETE TABLE BOOKING SYSTEM
+// lib/screens/table_booking_screen.dart - COMPLETE WITH BACKEND INTEGRATION
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/restaurant.dart';
+import '../services/booking_service.dart';
 
 class TableBookingScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -13,6 +14,7 @@ class TableBookingScreen extends StatefulWidget {
 }
 
 class _TableBookingScreenState extends State<TableBookingScreen> {
+  final TextEditingController _specialRequestsController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String? _selectedTimeSlot;
   int _numberOfGuests = 2;
@@ -159,7 +161,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     );
   }
 
-  void _confirmBooking() {
+  Future<void> _confirmBooking() async {
     if (_selectedTimeSlot == null) {
       _showMessage('Please select a time slot', Colors.red);
       return;
@@ -174,11 +176,23 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
       ),
     );
 
-    // Simulate booking process
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Close loading
+    // ✅ CALL BACKEND API
+    final bookingService = BookingService();
+    final result = await bookingService.createBooking(
+      restaurantId: widget.restaurant.id,
+      bookingDate: _selectedDate,
+      timeSlot: _selectedTimeSlot!,
+      numberOfGuests: _numberOfGuests,
+      specialRequests: _specialRequestsController.text.trim(),
+    );
+
+    Navigator.pop(context); // Close loading
+
+    if (result['success']) {
       _showSuccessDialog();
-    });
+    } else {
+      _showMessage(result['message'], Colors.red);
+    }
   }
 
   void _showSuccessDialog() {
@@ -250,11 +264,12 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'A confirmation has been sent',
+                'A confirmation has been sent to the restaurant',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -569,6 +584,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextField(
+                    controller: _specialRequestsController,
                     maxLines: 3,
                     decoration: InputDecoration(
                       hintText: 'e.g., Window seat, Birthday celebration...',
@@ -640,5 +656,11 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _specialRequestsController.dispose();
+    super.dispose();
   }
 }

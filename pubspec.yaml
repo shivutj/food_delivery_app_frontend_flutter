@@ -14,7 +14,6 @@ dependencies:
 
   # Networking
   http: ^1.2.0
-  http_parser: ^4.0.2
 
   # State Management
   provider: ^6.0.5
@@ -27,8 +26,7 @@ dependencies:
   video_player: ^2.8.2
   cached_network_image: ^3.3.0
 
-  # UI & Animations (LIGHTWEIGHT)
-  flutter_spinkit: ^5.2.0
+  # UI
   shimmer: ^3.0.0
   smooth_page_indicator: ^1.1.0
   flutter_rating_bar: ^4.0.1
@@ -44,8 +42,6 @@ dependencies:
   # Utils
   intl: ^0.18.1
   pinput: ^3.0.1
-
-  # ✅ NEW: URL Launcher (for maps & phone calls)
   url_launcher: ^6.3.2
 
 dev_dependencies:
@@ -55,7 +51,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  assets:
-    - assets/images/
-    - assets/banners/
+  
+  # Remove or comment out assets if you don't have them
+  # assets:
+  #   - assets/images/
+  #   - assets/banners/

@@ -1,4 +1,4 @@
-// lib/screens/analytics_dashboard_screen.dart - WITH DARK MODE
+// lib/screens/analytics_dashboard_screen.dart - FIXED WITH AUTO-REFRESH
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -27,20 +27,32 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Future<void> _loadAnalytics() async {
+    print('\n📊 Loading analytics...');
+    print('   Time Range: $_timeRange');
+    
     setState(() => _isLoading = true);
     
+    // ✅ NO CACHE - Always fetch fresh data
     final analytics = await _apiService.getAnalytics(_timeRange);
+    
+    print('   Analytics received: ${analytics != null ? 'YES' : 'NO'}');
+    if (analytics != null) {
+      print('   Total Orders: ${analytics['metrics']?['totalOrders']}');
+      print('   Revenue: ₹${analytics['metrics']?['totalRevenue']}');
+      print('   Active Users: ${analytics['metrics']?['activeUsers']}');
+    }
     
     setState(() {
       _analytics = analytics;
       _isLoading = false;
       _lastRefresh = DateTime.now();
     });
+    
+    print('   ✅ Analytics loaded\n');
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Access theme provider
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
@@ -87,7 +99,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               ),
             ),
             actions: [
-              // ✅ DARK MODE TOGGLE
               IconButton(
                 icon: Icon(
                   themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
@@ -99,6 +110,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white),
                 onPressed: _loadAnalytics,
+                tooltip: 'Refresh Data',
               ),
             ],
           ),
@@ -147,8 +159,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     final isSelected = _timeRange == value;
     return ElevatedButton(
       onPressed: () {
-        setState(() => _timeRange = value);
-        _loadAnalytics();
+        if (_timeRange != value) {
+          setState(() => _timeRange = value);
+          _loadAnalytics(); // ✅ Reload data when time range changes
+        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: isSelected ? Colors.blue.shade700 : Colors.grey.shade200,

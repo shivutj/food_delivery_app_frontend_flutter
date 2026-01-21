@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/user.dart';
-import '../models/restaurant.dart'; // ✅ ADDED
+import '../models/restaurant.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../providers/theme_provider.dart';
@@ -11,6 +11,7 @@ import 'admin_orders_screen.dart';
 import 'admin_menu_screen.dart';
 import 'analytics_dashboard_screen.dart';
 import 'restaurant_form_screen.dart';
+import 'restaurant_bookings_screen.dart';
 import 'login_screen.dart';
 
 class RestaurantDashboard extends StatefulWidget {
@@ -26,7 +27,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   final AuthService _authService = AuthService();
   final ApiService _apiService = ApiService();
 
-  Restaurant? _myRestaurant; // ✅ FIXED
+  Restaurant? _myRestaurant;
   bool _isLoading = true;
 
   @override
@@ -36,16 +37,15 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   }
 
   Future<void> _loadRestaurant() async {
-  setState(() => _isLoading = true);
-  
-  // ✅ FIXED - getMyRestaurant() already returns Restaurant object
-  final restaurant = await _apiService.getMyRestaurant();
-  
-  setState(() {
-    _myRestaurant = restaurant; // ✅ Direct assignment (no fromJson needed)
-    _isLoading = false;
-  });
-}
+    setState(() => _isLoading = true);
+    
+    final restaurant = await _apiService.getMyRestaurant();
+    
+    setState(() {
+      _myRestaurant = restaurant;
+      _isLoading = false;
+    });
+  }
 
   void _logout() {
     showDialog(
@@ -79,8 +79,8 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
       context,
       MaterialPageRoute(
         builder: (_) => RestaurantFormScreen(
-          restaurantId: _myRestaurant?.id, // ✅ FIXED
-          initialData: _myRestaurant,       // ✅ FIXED
+          restaurantId: _myRestaurant?.id,
+          initialData: _myRestaurant,
         ),
       ),
     );
@@ -166,7 +166,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _myRestaurant!.name, // ✅ FIXED
+              _myRestaurant!.name,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -206,7 +206,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Manage your restaurant analytics, menu, and orders',
+              'Manage your restaurant analytics, menu, orders and bookings',
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
@@ -254,6 +254,20 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const AdminOrdersScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    icon: Icons.event_seat,
+                    title: 'Dine-In Bookings',
+                    subtitle: 'Manage table bookings',
+                    color: Colors.purple,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RestaurantBookingsScreen(),
                         ),
                       );
                     },

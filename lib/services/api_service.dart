@@ -1,27 +1,39 @@
-// lib/services/api_service.dart - FIXED (REMOVE DUPLICATE AuthService)
+// lib/services/api_service.dart - OPTIMIZED
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart' show MediaType;
+
 import '../config/api_config.dart';
-import '../models/restaurant.dart';
 import '../models/menu_item.dart';
 import '../models/order.dart';
-import 'auth_service.dart'; // ✅ Import from auth_service.dart
+import '../models/restaurant.dart';
+import 'auth_service.dart';
 
 class ApiService {
   final String baseUrl = ApiConfig.baseUrl;
   final AuthService _authService = AuthService();
 
+  // Common headers
+  Map<String, String> get _jsonHeaders => {'Content-Type': 'application/json'};
+
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await _authService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
   // ==================== RESTAURANTS ====================
-  
+
   Future<List<Restaurant>> getRestaurants() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/restaurants'));
-      
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Restaurant.fromJson(json)).toList();
+        return (jsonDecode(response.body) as List)
+            .map((json) => Restaurant.fromJson(json))
+            .toList();
       }
       return [];
     } catch (e) {
@@ -30,41 +42,28 @@ class ApiService {
     }
   }
 
-  // ✅ Get restaurant owner's restaurant
   Future<Restaurant?> getMyRestaurant() async {
     try {
-      final token = await _authService.getToken();
       final response = await http.get(
         Uri.parse('$baseUrl/restaurants/my-restaurant'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return Restaurant.fromJson(data);
-      }
-      return null;
+      return response.statusCode == 200
+          ? Restaurant.fromJson(jsonDecode(response.body))
+          : null;
     } catch (e) {
       print('Get my restaurant error: $e');
       return null;
     }
   }
 
-  // ✅ Create restaurant
-  Future<bool> createRestaurant(Map<String, dynamic> restaurantData) async {
+  Future<bool> createRestaurant(Map<String, dynamic> data) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.post(
         Uri.parse('$baseUrl/restaurants'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(restaurantData),
+        headers: await _authHeaders(),
+        body: json.encode(data),
       );
-
       return response.statusCode == 201;
     } catch (e) {
       print('Create restaurant error: $e');
@@ -72,19 +71,13 @@ class ApiService {
     }
   }
 
-  // ✅ Update restaurant
-  Future<bool> updateRestaurant(String restaurantId, Map<String, dynamic> restaurantData) async {
+  Future<bool> updateRestaurant(String id, Map<String, dynamic> data) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.put(
-        Uri.parse('$baseUrl/restaurants/$restaurantId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(restaurantData),
+        Uri.parse('$baseUrl/restaurants/$id'),
+        headers: await _authHeaders(),
+        body: json.encode(data),
       );
-
       return response.statusCode == 200;
     } catch (e) {
       print('Update restaurant error: $e');
@@ -93,39 +86,27 @@ class ApiService {
   }
 
   // ==================== ANALYTICS ====================
-  
+
   Future<Map<String, dynamic>?> getAnalytics(String timeRange) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.get(
         Uri.parse('$baseUrl/analytics/dashboard?timeRange=$timeRange'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
       );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      return null;
+      return response.statusCode == 200 ? jsonDecode(response.body) : null;
     } catch (e) {
       print('Get analytics error: $e');
       return null;
     }
   }
 
-  Future<bool> updateRestaurantImage(String restaurantId, String imageUrl) async {
+  Future<bool> updateRestaurantImage(String id, String imageUrl) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.put(
-        Uri.parse('$baseUrl/api/restaurants/$restaurantId/image'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/api/restaurants/$id/image'),
+        headers: await _authHeaders(),
         body: json.encode({'image': imageUrl}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
       print('Update restaurant image error: $e');
@@ -134,36 +115,30 @@ class ApiService {
   }
 
   // ==================== MENU ====================
-  
+
   Future<List<MenuItem>> getMenu(String restaurantId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/restaurants/$restaurantId/menu'),
       );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => MenuItem.fromJson(json)).toList();
-      }
-      return [];
+      return response.statusCode == 200
+          ? (jsonDecode(response.body) as List)
+              .map((json) => MenuItem.fromJson(json))
+              .toList()
+          : [];
     } catch (e) {
       print('Get menu error: $e');
       return [];
     }
   }
 
-  Future<bool> addMenuItem(MenuItem menuItem) async {
+  Future<bool> addMenuItem(MenuItem item) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.post(
         Uri.parse('$baseUrl/api/menu'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(menuItem.toJson()),
+        headers: await _authHeaders(),
+        body: json.encode(item.toJson()),
       );
-
       return response.statusCode == 201;
     } catch (e) {
       print('Add menu error: $e');
@@ -171,18 +146,13 @@ class ApiService {
     }
   }
 
-  Future<bool> updateMenuItem(String menuId, MenuItem menuItem) async {
+  Future<bool> updateMenuItem(String id, MenuItem item) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.put(
-        Uri.parse('$baseUrl/api/menu/$menuId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(menuItem.toJson()),
+        Uri.parse('$baseUrl/api/menu/$id'),
+        headers: await _authHeaders(),
+        body: json.encode(item.toJson()),
       );
-
       return response.statusCode == 200;
     } catch (e) {
       print('Update menu error: $e');
@@ -190,16 +160,12 @@ class ApiService {
     }
   }
 
-  Future<bool> deleteMenuItem(String menuId) async {
+  Future<bool> deleteMenuItem(String id) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.delete(
-        Uri.parse('$baseUrl/menu/$menuId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/menu/$id'),
+        headers: await _authHeaders(),
       );
-      
       return response.statusCode == 200;
     } catch (e) {
       print('Delete menu error: $e');
@@ -208,22 +174,15 @@ class ApiService {
   }
 
   // ==================== ORDERS ====================
-  
-  Future<bool> placeOrder(List<Map<String, dynamic>> items, double total) async {
+
+  Future<bool> placeOrder(
+      List<Map<String, dynamic>> items, double total) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.post(
         Uri.parse('$baseUrl/orders'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'items': items,
-          'total': total,
-        }),
+        headers: await _authHeaders(),
+        body: jsonEncode({'items': items, 'total': total}),
       );
-      
       return response.statusCode == 201;
     } catch (e) {
       print('Place order error: $e');
@@ -233,19 +192,15 @@ class ApiService {
 
   Future<List<Order>> getOrderHistory() async {
     try {
-      final token = await _authService.getToken();
       final response = await http.get(
         Uri.parse('$baseUrl/orders/history'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
       );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Order.fromJson(json)).toList();
-      }
-      return [];
+      return response.statusCode == 200
+          ? (jsonDecode(response.body) as List)
+              .map((json) => Order.fromJson(json))
+              .toList()
+          : [];
     } catch (e) {
       print('Get order history error: $e');
       return [];
@@ -254,37 +209,28 @@ class ApiService {
 
   Future<List<Order>> getAllOrders() async {
     try {
-      final token = await _authService.getToken();
       final response = await http.get(
         Uri.parse('$baseUrl/orders/all'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
       );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Order.fromJson(json)).toList();
-      }
-      return [];
+      return response.statusCode == 200
+          ? (jsonDecode(response.body) as List)
+              .map((json) => Order.fromJson(json))
+              .toList()
+          : [];
     } catch (e) {
       print('Get all orders error: $e');
       return [];
     }
   }
 
-  Future<bool> updateOrderStatus(String orderId, String status) async {
+  Future<bool> updateOrderStatus(String id, String status) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.patch(
-        Uri.parse('$baseUrl/orders/$orderId/status'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/orders/$id/status'),
+        headers: await _authHeaders(),
         body: jsonEncode({'status': status}),
       );
-      
       return response.statusCode == 200;
     } catch (e) {
       print('Update order status error: $e');
@@ -292,110 +238,46 @@ class ApiService {
     }
   }
 
-  // ==================== IMAGE UPLOAD ====================
-  
-  Future<String?> uploadImage(File imageFile) async {
+  // ==================== UPLOADS ====================
+
+  Future<String?> uploadImage(File file) async {
     try {
       final token = await _authService.getToken();
-      
-      if (token == null || token.isEmpty) {
-        print('Upload error: No authentication token');
-        return null;
-      }
+      if (token == null || token.isEmpty) return null;
 
-      var request = http.MultipartRequest(
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/api/upload'),
-      );
-      
-      request.headers['Authorization'] = 'Bearer $token';
-      
-      final filename = imageFile.path.split('/').last;
-      MediaType? contentType;
-      
-      if (filename.toLowerCase().endsWith('.png')) {
-        contentType = MediaType('image', 'png');
-      } else if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
-        contentType = MediaType('image', 'jpeg');
-      } else if (filename.toLowerCase().endsWith('.gif')) {
-        contentType = MediaType('image', 'gif');
-      } else if (filename.toLowerCase().endsWith('.webp')) {
-        contentType = MediaType('image', 'webp');
-      }
-      
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'image',
-          imageFile.path,
-          filename: filename,
-          contentType: contentType,
-        ),
-      );
+      )..headers['Authorization'] = 'Bearer $token';
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      request.files.add(await http.MultipartFile.fromPath('image', file.path));
+      final response = await http.Response.fromStream(await request.send());
 
-      if (response.statusCode == 200) {
-        try {
-          final jsonData = json.decode(response.body);
-          return jsonData['imageUrl'];
-        } catch (e) {
-          print('JSON parse error: $e');
-          return null;
-        }
-      } else {
-        print('Upload failed with status: ${response.statusCode}');
-        return null;
-      }
+      return response.statusCode == 200
+          ? json.decode(response.body)['imageUrl']
+          : null;
     } catch (e) {
       print('Upload error: $e');
       return null;
     }
   }
 
-  // ✅ Upload video
-  Future<String?> uploadVideo(File videoFile) async {
+  Future<String?> uploadVideo(File file) async {
     try {
       final token = await _authService.getToken();
-      
-      if (token == null || token.isEmpty) {
-        print('Upload error: No authentication token');
-        return null;
-      }
+      if (token == null || token.isEmpty) return null;
 
-      var request = http.MultipartRequest(
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/api/upload-video'),
-      );
-      
-      request.headers['Authorization'] = 'Bearer $token';
-      
-      final filename = videoFile.path.split('/').last;
-      
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'video',
-          videoFile.path,
-          filename: filename,
-          contentType: MediaType('video', 'mp4'),
-        ),
-      );
+      )..headers['Authorization'] = 'Bearer $token';
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      request.files.add(await http.MultipartFile.fromPath('video', file.path));
+      final response = await http.Response.fromStream(await request.send());
 
-      if (response.statusCode == 200) {
-        try {
-          final jsonData = json.decode(response.body);
-          return jsonData['videoUrl'];
-        } catch (e) {
-          print('JSON parse error: $e');
-          return null;
-        }
-      } else {
-        print('Video upload failed with status: ${response.statusCode}');
-        return null;
-      }
+      return response.statusCode == 200
+          ? json.decode(response.body)['videoUrl']
+          : null;
     } catch (e) {
       print('Video upload error: $e');
       return null;
@@ -403,22 +285,16 @@ class ApiService {
   }
 
   // ==================== PROFILE ====================
-  
-  Future<bool> updateProfilePhoto(String photoUrl) async {
+
+  Future<bool> updateProfilePhoto(String url) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl/profile/photo'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({'profilePhoto': photoUrl}),
+        headers: await _authHeaders(),
+        body: json.encode({'profilePhoto': url}),
       );
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await _authService.saveUserData(data['user']);
+        await _authService.saveUserData(json.decode(response.body)['user']);
         return true;
       }
       return false;
@@ -437,13 +313,9 @@ class ApiService {
     double? longitude,
   }) async {
     try {
-      final token = await _authService.getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl/profile/address'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
         body: json.encode({
           'street': street,
           'city': city,
@@ -453,10 +325,8 @@ class ApiService {
           'longitude': longitude,
         }),
       );
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await _authService.saveUserData(data['user']);
+        await _authService.saveUserData(json.decode(response.body)['user']);
         return true;
       }
       return false;
@@ -468,23 +338,17 @@ class ApiService {
 
   Future<bool> updateProfile({String? name, String? phone}) async {
     try {
-      final token = await _authService.getToken();
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
       if (phone != null) body['phone'] = phone;
 
       final response = await http.patch(
         Uri.parse('$baseUrl/profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await _authHeaders(),
         body: json.encode(body),
       );
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await _authService.saveUserData(data['user']);
+        await _authService.saveUserData(json.decode(response.body)['user']);
         return true;
       }
       return false;
