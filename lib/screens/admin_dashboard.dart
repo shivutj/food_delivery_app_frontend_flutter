@@ -1,10 +1,11 @@
-// lib/screens/admin_dashboard.dart - WITH DARK MODE
+// lib/screens/admin_dashboard.dart - UPDATED WITH REVIEWS
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
 import '../providers/theme_provider.dart';
 import 'analytics_dashboard_screen.dart';
+import 'admin_reviews_dashboard.dart';
 import 'login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -37,6 +38,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
@@ -44,7 +46,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               await _authService.logout();
               Navigator.pushAndRemoveUntil(
@@ -53,62 +55,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 (route) => false,
               );
             },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProfile() {
-    if (_currentUser == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Admin Profile'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person, color: Colors.blue),
-              title: const Text('Name'),
-              subtitle: Text(
-                _currentUser!.name,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5252),
             ),
-            ListTile(
-              leading: const Icon(Icons.phone, color: Colors.green),
-              title: const Text('Phone'),
-              subtitle: Text(
-                _currentUser!.phone,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white),
             ),
-            ListTile(
-              leading: const Icon(Icons.email, color: Colors.orange),
-              title: const Text('Email'),
-              subtitle: Text(
-                _currentUser!.email,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const ListTile(
-              leading: Icon(Icons.admin_panel_settings, color: Colors.purple),
-              title: Text('Role'),
-              subtitle: Text(
-                'System Administrator',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
           ),
         ],
       ),
@@ -117,58 +70,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Access theme provider
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
 
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               _currentUser != null ? _currentUser!.name : 'Admin',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF212121),
+              ),
             ),
             if (_currentUser != null)
               Text(
-                '📱 ${_currentUser!.phone}',
+                _currentUser!.phone,
                 style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.white70,
+                  fontSize: 12,
+                  color: Color(0xFF757575),
                 ),
               ),
           ],
         ),
         actions: [
-          // ✅ DARK MODE TOGGLE
           IconButton(
             icon: Icon(
-              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: const Color(0xFF424242),
             ),
             onPressed: () => themeProvider.toggleTheme(),
-            tooltip: themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
           ),
-          if (_currentUser != null)
-            IconButton(
-              icon: const Icon(Icons.account_circle),
-              onPressed: _showProfile,
-              tooltip: 'My Profile',
-            ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Color(0xFF424242)),
             onPressed: _logout,
-            tooltip: 'Logout',
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,91 +129,78 @@ class _AdminDashboardState extends State<AdminDashboard> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
+                color: Color(0xFF212121),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Monitor all system analytics and performance',
+              'Monitor and manage all system operations',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
-            // Analytics Card
-            Center(
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: InkWell(
-                  onTap: () {
+            // Dashboard Cards Grid
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.1,
+              children: [
+                _buildDashboardCard(
+                  'Analytics',
+                  'View system-wide metrics',
+                  Icons.analytics,
+                  const Color(0xFF2196F3),
+                  () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AnalyticsDashboardScreen(),
+                        builder: (_) => const AnalyticsDashboardScreen(),
                       ),
                     );
                   },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: 280,
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.analytics,
-                            size: 64,
-                            color: Colors.blue.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'System Analytics',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'View all restaurants and system-wide metrics',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-              ),
+                _buildDashboardCard(
+                  'Reviews',
+                  'Moderate user reviews',
+                  Icons.rate_review,
+                  const Color(0xFFFF6B6B),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminReviewsDashboard(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Info Box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: const Color(0xFFE3F2FD),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(
+                  color: const Color(0xFF2196F3).withOpacity(0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue.shade700),
+                  const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFF1976D2),
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -275,6 +213,58 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF212121),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
