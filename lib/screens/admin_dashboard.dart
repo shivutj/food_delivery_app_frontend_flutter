@@ -1,11 +1,14 @@
-// lib/screens/admin_dashboard.dart - UPDATED WITH REVIEWS
+// lib/screens/admin_dashboard.dart - UPDATED WITH REVIEWS + REVIEW ANALYTICS
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../services/auth_service.dart';
 import '../models/user.dart';
 import '../providers/theme_provider.dart';
+
 import 'analytics_dashboard_screen.dart';
 import 'admin_reviews_dashboard.dart';
+import 'admin_review_analytics.dart'; // ✅ ADDED
 import 'login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -142,7 +145,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 24),
 
-            // Dashboard Cards Grid
+            // ================= DASHBOARD GRID =================
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -165,6 +168,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     );
                   },
                 ),
+
                 _buildDashboardCard(
                   'Reviews',
                   'Moderate user reviews',
@@ -179,12 +183,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     );
                   },
                 ),
+
+                // ✅ NEW CARD: REVIEW ANALYTICS
+                _buildDashboardCard(
+                  'Review Analytics',
+                  'View review stats',
+                  Icons.rate_review,
+                  Colors.purple,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminReviewAnalytics(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
 
             const SizedBox(height: 24),
 
-            // Info Box
+            // ================= INFO BOX =================
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
