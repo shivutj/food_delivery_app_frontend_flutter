@@ -1,4 +1,4 @@
-// lib/services/review_service.dart - REVIEW SERVICE
+// lib/services/review_service.dart - ENHANCED WITH EMOJI SENTIMENT
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -8,7 +8,7 @@ class ReviewService {
   final String baseUrl = ApiConfig.baseUrl;
   final AuthService _authService = AuthService();
 
-  // Check if order can be reviewed
+  // ✅ CHECK ELIGIBILITY
   Future<Map<String, dynamic>> checkEligibility(String orderId) async {
     try {
       final token = await _authService.getToken();
@@ -29,9 +29,10 @@ class ReviewService {
     }
   }
 
-  // Submit review
+  // ✅ SUBMIT REVIEW (with emoji sentiment)
   Future<Map<String, dynamic>> submitReview({
     required String orderId,
+    required String emojiSentiment, // ✅ NEW: thumbs_up or thumbs_down
     required double rating,
     required double foodQualityRating,
     required double deliveryRating,
@@ -48,6 +49,7 @@ class ReviewService {
         },
         body: jsonEncode({
           'order_id': orderId,
+          'emoji_sentiment': emojiSentiment, // ✅ NEW
           'rating': rating,
           'food_quality_rating': foodQualityRating,
           'delivery_rating': deliveryRating,
@@ -77,7 +79,7 @@ class ReviewService {
     }
   }
 
-  // Get reviews for restaurant
+  // ✅ GET RESTAURANT REVIEWS
   Future<List<Map<String, dynamic>>> getRestaurantReviews(
     String restaurantId, {
     String sort = 'recent',
@@ -85,7 +87,9 @@ class ReviewService {
   }) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/restaurant/$restaurantId?sort=$sort&minTrustScore=$minTrustScore'),
+        Uri.parse(
+          '$baseUrl/reviews/restaurant/$restaurantId?sort=$sort&minTrustScore=$minTrustScore',
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -99,7 +103,7 @@ class ReviewService {
     }
   }
 
-  // Mark review as helpful
+  // ✅ MARK HELPFUL
   Future<bool> markHelpful(String reviewId, bool isHelpful) async {
     try {
       final token = await _authService.getToken();
@@ -121,7 +125,7 @@ class ReviewService {
     }
   }
 
-  // Report review
+  // ✅ REPORT REVIEW
   Future<bool> reportReview(String reviewId, String reason) async {
     try {
       final token = await _authService.getToken();
@@ -143,7 +147,7 @@ class ReviewService {
     }
   }
 
-  // Get my reviews
+  // ✅ GET MY REVIEWS
   Future<List<Map<String, dynamic>>> getMyReviews() async {
     try {
       final token = await _authService.getToken();
@@ -164,7 +168,7 @@ class ReviewService {
     }
   }
 
-  // Get reviewer profile
+  // ✅ GET REVIEWER PROFILE
   Future<Map<String, dynamic>?> getReviewerProfile() async {
     try {
       final token = await _authService.getToken();

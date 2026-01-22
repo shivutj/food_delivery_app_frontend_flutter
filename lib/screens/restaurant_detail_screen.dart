@@ -1,4 +1,4 @@
-// lib/screens/restaurant_detail_screen.dart - COMPLETE WITH ALL FEATURES
+// lib/screens/restaurant_detail_screen.dart - FIXED REVIEWS ROUTING
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import 'menu_screen.dart';
 import 'table_booking_screen.dart';
-import 'restaurant_reviews_screen.dart';
+import 'restaurant_reviews_enhanced.dart'; // ✅ FIXED: Using enhanced reviews
 import 'restaurant_offers_screen.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
@@ -27,7 +27,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.restaurant.video != null && widget.restaurant.video!.isNotEmpty) {
+    if (widget.restaurant.video != null &&
+        widget.restaurant.video!.isNotEmpty) {
       _initializeVideo();
     }
   }
@@ -62,10 +63,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
 
     final lat = widget.restaurant.location!.latitude;
     final lng = widget.restaurant.location!.longitude;
-    
+
     final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'
-    );
+        'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
 
     try {
       if (await canLaunchUrl(url)) {
@@ -80,14 +80,14 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
 
   Future<void> _callRestaurant() async {
     final phone = widget.restaurant.bookingPhone ?? widget.restaurant.phone;
-    
+
     if (phone == null || phone.isEmpty) {
       _showMessage('Phone number not available', Colors.red);
       return;
     }
 
     final url = Uri.parse('tel:$phone');
-    
+
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url);
@@ -112,7 +112,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final hasImages = widget.restaurant.images.isNotEmpty;
-    final hasVideo = widget.restaurant.video != null && widget.restaurant.video!.isNotEmpty;
+    final hasVideo =
+        widget.restaurant.video != null && widget.restaurant.video!.isNotEmpty;
     final hasMedia = hasImages || hasVideo;
 
     return Scaffold(
@@ -136,15 +137,19 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                                   fit: BoxFit.cover,
                                   placeholder: (_, __) => Container(
                                     color: Colors.grey.shade200,
-                                    child: const Center(child: CircularProgressIndicator()),
+                                    child: const Center(
+                                        child: CircularProgressIndicator()),
                                   ),
                                   errorWidget: (_, __, ___) => Container(
                                     color: Colors.grey.shade300,
-                                    child: const Icon(Icons.restaurant, size: 64),
+                                    child:
+                                        const Icon(Icons.restaurant, size: 64),
                                   ),
                                 ),
                               ),
-                            if (hasVideo && _videoController != null && _videoController!.value.isInitialized)
+                            if (hasVideo &&
+                                _videoController != null &&
+                                _videoController!.value.isInitialized)
                               Stack(
                                 fit: StackFit.expand,
                                 children: [
@@ -157,7 +162,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                                       ),
                                       child: IconButton(
                                         icon: Icon(
-                                          _isVideoPlaying ? Icons.pause : Icons.play_arrow,
+                                          _isVideoPlaying
+                                              ? Icons.pause
+                                              : Icons.play_arrow,
                                           color: Colors.white,
                                           size: 48,
                                         ),
@@ -169,7 +176,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                               ),
                           ],
                         ),
-                        if ((hasImages ? widget.restaurant.images.length : 0) + (hasVideo ? 1 : 0) > 1)
+                        if ((hasImages ? widget.restaurant.images.length : 0) +
+                                (hasVideo ? 1 : 0) >
+                            1)
                           Positioned(
                             bottom: 16,
                             left: 0,
@@ -177,7 +186,10 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                             child: Center(
                               child: SmoothPageIndicator(
                                 controller: _pageController,
-                                count: (hasImages ? widget.restaurant.images.length : 0) + (hasVideo ? 1 : 0),
+                                count: (hasImages
+                                        ? widget.restaurant.images.length
+                                        : 0) +
+                                    (hasVideo ? 1 : 0),
                                 effect: WormEffect(
                                   dotWidth: 8,
                                   dotHeight: 8,
@@ -191,7 +203,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     )
                   : Container(
                       color: Colors.grey.shade200,
-                      child: const Icon(Icons.restaurant, size: 100, color: Colors.grey),
+                      child: const Icon(Icons.restaurant,
+                          size: 100, color: Colors.grey),
                     ),
             ),
           ),
@@ -220,17 +233,22 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.amber.shade600, Colors.amber.shade400],
+                            colors: [
+                              Colors.amber.shade600,
+                              Colors.amber.shade400
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, color: Colors.white, size: 18),
+                            const Icon(Icons.star,
+                                color: Colors.white, size: 18),
                             const SizedBox(width: 4),
                             Text(
                               widget.restaurant.rating.toString(),
@@ -250,17 +268,22 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                   // Dine-In Badge
                   if (widget.restaurant.dineInAvailable)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green.shade600, Colors.green.shade400],
+                          colors: [
+                            Colors.green.shade600,
+                            Colors.green.shade400
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.restaurant, color: Colors.white, size: 18),
+                          const Icon(Icons.restaurant,
+                              color: Colors.white, size: 18),
                           const SizedBox(width: 8),
                           const Text(
                             'Dine-In Available',
@@ -293,7 +316,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         icon: Icons.directions,
                         label: 'Directions',
                         color: Colors.green,
-                        onTap: widget.restaurant.hasLocation ? _openDirections : null,
+                        onTap: widget.restaurant.hasLocation
+                            ? _openDirections
+                            : null,
                       ),
                       _buildQuickAction(
                         icon: Icons.local_offer,
@@ -315,10 +340,11 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         label: 'Reviews',
                         color: Colors.amber,
                         onTap: () {
+                          // ✅ FIXED: Navigate to enhanced reviews screen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => RestaurantReviewsScreen(
+                              builder: (_) => RestaurantReviewsEnhanced(
                                 restaurant: widget.restaurant,
                               ),
                             ),
@@ -407,7 +433,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         ),
                       ),
                     ),
-                  if (widget.restaurant.dineInAvailable) const SizedBox(height: 12),
+                  if (widget.restaurant.dineInAvailable)
+                    const SizedBox(height: 12),
 
                   SizedBox(
                     width: double.infinity,
@@ -417,11 +444,13 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => MenuScreen(restaurant: widget.restaurant),
+                            builder: (_) =>
+                                MenuScreen(restaurant: widget.restaurant),
                           ),
                         );
                       },
-                      icon: const Icon(Icons.restaurant_menu, color: Colors.white),
+                      icon: const Icon(Icons.restaurant_menu,
+                          color: Colors.white),
                       label: const Text(
                         'View Menu & Order',
                         style: TextStyle(
@@ -490,7 +519,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String title, String content, Color color) {
+  Widget _buildInfoCard(
+      IconData icon, String title, String content, Color color) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),

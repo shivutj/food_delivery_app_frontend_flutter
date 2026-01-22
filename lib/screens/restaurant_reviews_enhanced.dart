@@ -1,4 +1,4 @@
-// lib/screens/restaurant_reviews_enhanced.dart - GLASSMORPHISM REVIEWS
+// lib/screens/restaurant_reviews_enhanced.dart - COMPLETE WITH EMOJI SENTIMENT
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
@@ -21,6 +21,11 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
   bool _isLoading = true;
   String _sortBy = 'recent';
 
+  // ✅ EMOJI SENTIMENT STATS
+  int _thumbsUpCount = 0;
+  int _thumbsDownCount = 0;
+  double _positiveRatio = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -35,8 +40,25 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
       sort: _sortBy,
     );
 
+    // ✅ Calculate emoji sentiment stats
+    int thumbsUp = 0;
+    int thumbsDown = 0;
+
+    for (var review in reviews) {
+      if (review['emoji_sentiment'] == 'thumbs_up') {
+        thumbsUp++;
+      } else if (review['emoji_sentiment'] == 'thumbs_down') {
+        thumbsDown++;
+      }
+    }
+
+    final total = thumbsUp + thumbsDown;
+
     setState(() {
       _reviews = reviews;
+      _thumbsUpCount = thumbsUp;
+      _thumbsDownCount = thumbsDown;
+      _positiveRatio = total > 0 ? (thumbsUp / total) * 100 : 0;
       _isLoading = false;
     });
   }
@@ -182,6 +204,7 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
           child: Column(
             children: [
               _buildGlassAppBar(),
+              _buildEmojiSentimentStats(),
               _buildSortBar(),
               Expanded(
                 child: _isLoading
@@ -247,6 +270,108 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ✅ NEW: Emoji Sentiment Statistics
+  Widget _buildEmojiSentimentStats() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.orange.shade400, Colors.orange.shade600],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'Customer Sentiment',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildEmojiStat('👍', _thumbsUpCount, Colors.green),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildEmojiStat('👎', _thumbsDownCount, Colors.red),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.trending_up, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  '${_positiveRatio.toStringAsFixed(1)}% Positive',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmojiStat(String emoji, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 48),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            count == 1 ? 'review' : 'reviews',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -320,6 +445,7 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
     final trustScore = review['trust_score'];
     final labels = List<String>.from(review['labels'] ?? []);
     final reviewerLevel = review['reviewer_level'] ?? 'bronze';
+    final emojiSentiment = review['emoji_sentiment']; // ✅ NEW
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -385,13 +511,21 @@ class _RestaurantReviewsEnhancedState extends State<RestaurantReviewsEnhanced> {
                     ),
                     const SizedBox(height: 4),
                     Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          index < rating ? Icons.star : Icons.star_border,
-                          size: 16,
-                          color: Colors.orange.shade400,
-                        );
-                      }),
+                      children: [
+                        // ✅ EMOJI SENTIMENT
+                        Text(
+                          emojiSentiment == 'thumbs_up' ? '👍' : '👎',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        ...List.generate(5, (index) {
+                          return Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            size: 16,
+                            color: Colors.orange.shade400,
+                          );
+                        }),
+                      ],
                     ),
                   ],
                 ),
