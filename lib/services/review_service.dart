@@ -1,38 +1,35 @@
-// lib/services/review_service.dart - ENHANCED WITH EMOJI SENTIMENT
-import 'dart:convert';
+// lib/services/review_service.dart - User review service
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../config/api_config.dart';
 import 'auth_service.dart';
 
 class ReviewService {
-  final String baseUrl = ApiConfig.baseUrl;
   final AuthService _authService = AuthService();
 
-  // ✅ CHECK ELIGIBILITY
   Future<Map<String, dynamic>> checkEligibility(String orderId) async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/eligibility/$orderId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('${ApiConfig.baseUrl}/reviews/eligibility/$orderId'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
+
       return {'eligible': false, 'message': 'Failed to check eligibility'};
     } catch (e) {
       print('Check eligibility error: $e');
-      return {'eligible': false, 'message': 'Network error'};
+      return {'eligible': false, 'message': 'Error: $e'};
     }
   }
 
-  // ✅ SUBMIT REVIEW (with emoji sentiment)
   Future<Map<String, dynamic>> submitReview({
     required String orderId,
-    required String emojiSentiment, // ✅ NEW: thumbs_up or thumbs_down
+    required String emojiSentiment,
     required double rating,
     required double foodQualityRating,
     required double deliveryRating,
@@ -41,15 +38,16 @@ class ReviewService {
   }) async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.post(
-        Uri.parse('$baseUrl/reviews'),
+        Uri.parse('${ApiConfig.baseUrl}/reviews'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           'order_id': orderId,
-          'emoji_sentiment': emojiSentiment, // ✅ NEW
+          'emoji_sentiment': emojiSentiment,
           'rating': rating,
           'food_quality_rating': foodQualityRating,
           'delivery_rating': deliveryRating,
@@ -63,23 +61,19 @@ class ReviewService {
           'success': true,
           'data': jsonDecode(response.body),
         };
-      } else {
-        final error = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': error['message'] ?? 'Failed to submit review',
-        };
       }
-    } catch (e) {
-      print('Submit review error: $e');
+
+      final error = jsonDecode(response.body);
       return {
         'success': false,
-        'message': 'Network error: $e',
+        'message': error['message'] ?? 'Failed to submit review',
       };
+    } catch (e) {
+      print('Submit review error: $e');
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 
-  // ✅ GET RESTAURANT REVIEWS
   Future<List<Map<String, dynamic>>> getRestaurantReviews(
     String restaurantId, {
     String sort = 'recent',
@@ -88,7 +82,7 @@ class ReviewService {
     try {
       final response = await http.get(
         Uri.parse(
-          '$baseUrl/reviews/restaurant/$restaurantId?sort=$sort&minTrustScore=$minTrustScore',
+          '${ApiConfig.baseUrl}/reviews/restaurant/$restaurantId?sort=$sort&minTrustScore=$minTrustScore',
         ),
       );
 
@@ -96,26 +90,25 @@ class ReviewService {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['reviews']);
       }
+
       return [];
     } catch (e) {
-      print('Get reviews error: $e');
+      print('Get restaurant reviews error: $e');
       return [];
     }
   }
 
-  // ✅ MARK HELPFUL
   Future<bool> markHelpful(String reviewId, bool isHelpful) async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.post(
-        Uri.parse('$baseUrl/reviews/$reviewId/helpful'),
+        Uri.parse('${ApiConfig.baseUrl}/reviews/$reviewId/helpful'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'is_helpful': isHelpful,
-        }),
+        body: jsonEncode({'is_helpful': isHelpful}),
       );
 
       return response.statusCode == 200;
@@ -125,19 +118,17 @@ class ReviewService {
     }
   }
 
-  // ✅ REPORT REVIEW
   Future<bool> reportReview(String reviewId, String reason) async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.post(
-        Uri.parse('$baseUrl/reviews/$reviewId/report'),
+        Uri.parse('${ApiConfig.baseUrl}/reviews/$reviewId/report'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'reason': reason,
-        }),
+        body: jsonEncode({'reason': reason}),
       );
 
       return response.statusCode == 200;
@@ -147,20 +138,19 @@ class ReviewService {
     }
   }
 
-  // ✅ GET MY REVIEWS
   Future<List<Map<String, dynamic>>> getMyReviews() async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/my-reviews'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('${ApiConfig.baseUrl}/reviews/my-reviews'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         return List<Map<String, dynamic>>.from(jsonDecode(response.body));
       }
+
       return [];
     } catch (e) {
       print('Get my reviews error: $e');
@@ -168,24 +158,23 @@ class ReviewService {
     }
   }
 
-  // ✅ GET REVIEWER PROFILE
-  Future<Map<String, dynamic>?> getReviewerProfile() async {
+  Future<Map<String, dynamic>> getReviewerProfile() async {
     try {
       final token = await _authService.getToken();
+
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/reviewer-profile'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('${ApiConfig.baseUrl}/reviews/reviewer-profile'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
-      return null;
+
+      return {};
     } catch (e) {
       print('Get reviewer profile error: $e');
-      return null;
+      return {};
     }
   }
 }
