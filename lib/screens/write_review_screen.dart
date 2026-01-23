@@ -1,4 +1,3 @@
-// lib/screens/write_review_screen.dart - FIXED LOADING STATE
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
 
@@ -25,6 +24,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   double _deliveryRating = 5;
   bool _isLoading = false;
   bool _isPositive = true;
+  int _charCount = 0;
 
   @override
   void initState() {
@@ -34,7 +34,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
   Future<void> _checkEligibility() async {
     final result = await _reviewService.checkEligibility(widget.orderId);
-
     if (!result['eligible'] && mounted) {
       _showMessage(result['message'], const Color(0xFFFF5252));
       Navigator.pop(context);
@@ -42,9 +41,12 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   }
 
   Future<void> _submitReview() async {
-    if (_reviewController.text.trim().length < 80) {
+    final textLength = _reviewController.text.trim().length;
+
+    // ✅ FIX: Removed the 80-char minimum. Now just checks if empty.
+    if (textLength == 0) {
       _showMessage(
-        'Please write at least 80 characters',
+        'Please write something about your experience.',
         const Color(0xFFFF9800),
       );
       return;
@@ -118,7 +120,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Thank you for your honest feedback',
+                'Thank you for your feedback',
                 style: TextStyle(color: Colors.grey.shade600),
               ),
               const SizedBox(height: 24),
@@ -173,7 +175,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
   void _showMessage(String msg, Color color) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -235,29 +236,38 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
             _buildRatingRow('Delivery', _deliveryRating,
                 (v) => setState(() => _deliveryRating = v)),
             const SizedBox(height: 24),
+
+            // ✅ UPDATED TEXT FIELD
             TextField(
               controller: _reviewController,
-              maxLines: 6,
-              maxLength: 2000,
+              maxLines: 4,
+              maxLength: 80, // ✅ Strictly limits input to 80 chars
               onChanged: (text) {
-                setState(() {});
+                setState(() {
+                  _charCount = text.trim().length;
+                });
               },
-              decoration: const InputDecoration(
-                hintText: 'Share your experience... (min 80 characters)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'Share your experience (optional)',
+                border: const OutlineInputBorder(),
+                // ✅ Simplified counter
+                counterText: '$_charCount/80',
+                counterStyle: TextStyle(
+                  color: _charCount == 80 ? Colors.red : Colors.grey,
+                ),
               ),
             ),
+
             const SizedBox(height: 24),
+
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed:
-                    _reviewController.text.trim().length >= 80 && !_isLoading
-                        ? _submitReview
-                        : null,
+                onPressed: _isLoading ? null : _submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
+                  disabledBackgroundColor: Colors.grey,
                 ),
                 child: _isLoading
                     ? const SizedBox(
@@ -291,7 +301,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     required Color color,
   }) {
     final selected = _isPositive == isPositive;
-
     return GestureDetector(
       onTap: () => setState(() => _isPositive = isPositive),
       child: Container(
