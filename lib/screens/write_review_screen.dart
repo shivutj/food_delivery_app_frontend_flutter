@@ -62,7 +62,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         reviewText: _reviewController.text.trim(),
       );
 
-      // ✅ ALWAYS RESET LOADING STATE
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -77,7 +76,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         }
       }
     } catch (e) {
-      // ✅ ENSURE LOADING STOPS EVEN ON ERROR
       if (mounted) {
         setState(() => _isLoading = false);
         _showMessage('Error: ${e.toString()}', const Color(0xFFFF5252));
@@ -241,8 +239,12 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               controller: _reviewController,
               maxLines: 6,
               maxLength: 2000,
+              onChanged: (text) {
+                setState(() {});
+              },
               decoration: const InputDecoration(
                 hintText: 'Share your experience... (min 80 characters)',
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -250,9 +252,10 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _reviewController.text.length >= 80 && !_isLoading
-                    ? _submitReview
-                    : null,
+                onPressed:
+                    _reviewController.text.trim().length >= 80 && !_isLoading
+                        ? _submitReview
+                        : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4CAF50),
                 ),

@@ -31,13 +31,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     final orders = await _apiService.getOrderHistory();
 
-    // ✅ Check review eligibility for ALL delivered orders
     for (var order in orders) {
-      if (order.status == 'Delivered') {
+      if (order.status == 'Delivered' && !order.reviewed) {
         final eligibility = await _reviewService.checkEligibility(order.id);
         _reviewEligibility[order.id] = eligibility['eligible'] ?? false;
 
-        // ✅ Show notification if eligible and not yet shown
         if (eligibility['eligible'] == true) {
           _showReviewNotification(order);
         }
@@ -52,9 +50,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   // ✅ NEW: Show review notification
   void _showReviewNotification(Order order) {
-    // Check if we've already shown notification for this order
-    final prefs = ['shown_review_${order.id}'];
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,6 +88,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               label: 'Review Now',
               textColor: Colors.white,
               onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 _writeReview(order);
               },
             ),
@@ -104,13 +100,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _writeReview(Order order) async {
+    // Dismiss any existing snackbars first
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WriteReviewScreen(
           orderId: order.id,
-          restaurantName:
-              order.items.isNotEmpty ? order.items[0].name : 'Restaurant',
+          restaurantName: 'Restaurant',
         ),
       ),
     );
