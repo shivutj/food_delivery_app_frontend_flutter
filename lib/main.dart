@@ -1,11 +1,17 @@
-// lib/main.dart - UPDATED WITH THEME PROVIDER
+// lib/main.dart - REPLACE THE ENTIRE FILE
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
-import 'providers/theme_provider.dart'; // NEW
+import 'providers/theme_provider.dart';
+import 'services/notification_service.dart'; // ✅ ADD THIS
 import 'screens/login_screen.dart';
 
-void main() {
+void main() async {
+  // ✅ ADD THIS
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
+
   runApp(const MyApp());
 }
 
@@ -17,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()), // NEW
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -38,12 +44,13 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: 'Food Delivery App',
             debugShowCheckedModeBanner: false,
-            
+
             // Dynamic theme switching
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            
+            themeMode:
+                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+
             home: const LoginScreen(),
           );
         },

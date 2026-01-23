@@ -14,7 +14,8 @@ class ApiService {
   final String baseUrl = ApiConfig.baseUrl;
   final AuthService _authService = AuthService();
 
-  // Common headers
+  // ==================== COMMON HEADERS ====================
+
   Map<String, String> get _jsonHeaders => {'Content-Type': 'application/json'};
 
   Future<Map<String, String>> _authHeaders() async {
@@ -82,6 +83,25 @@ class ApiService {
     } catch (e) {
       print('Update restaurant error: $e');
       return false;
+    }
+  }
+
+  // ==================== RESTAURANT RANKINGS (✅ FIXED) ====================
+
+  Future<List<Map<String, dynamic>>> getRestaurantRankings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/restaurants/rankings'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['rankings']);
+      }
+      return [];
+    } catch (e) {
+      print('Get restaurant rankings error: $e');
+      return [];
     }
   }
 

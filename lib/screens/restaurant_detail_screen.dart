@@ -1,4 +1,4 @@
-// lib/screens/restaurant_detail_screen.dart - FIXED REVIEWS ROUTING
+// lib/screens/restaurant_detail_screen.dart - COMPLETE WITH FIXED ICONS
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/restaurant.dart';
 import 'menu_screen.dart';
 import 'table_booking_screen.dart';
-import 'restaurant_reviews_enhanced.dart'; // ✅ FIXED: Using enhanced reviews
+import 'restaurant_reviews_enhanced.dart';
 import 'restaurant_offers_screen.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
@@ -281,11 +281,10 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.restaurant,
-                              color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
+                        children: const [
+                          Icon(Icons.restaurant, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
+                          Text(
                             'Dine-In Available',
                             style: TextStyle(
                               color: Colors.white,
@@ -298,13 +297,14 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     ),
                   const SizedBox(height: 20),
 
-                  // Quick Action Buttons Grid
+                  // ✅ FIXED: Quick Action Buttons Grid
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 4,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
+                    childAspectRatio: 1.0,
                     children: [
                       _buildQuickAction(
                         icon: Icons.call,
@@ -340,7 +340,6 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                         label: 'Reviews',
                         color: Colors.amber,
                         onTap: () {
-                          // ✅ FIXED: Navigate to enhanced reviews screen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -476,6 +475,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     );
   }
 
+  // ✅ FIXED: Quick Action with proper sizing
   Widget _buildQuickAction({
     required IconData icon,
     required String label,
@@ -512,6 +512,8 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                 color: isDisabled ? Colors.grey.shade400 : color,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

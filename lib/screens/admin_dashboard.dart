@@ -1,4 +1,4 @@
-// lib/screens/admin_dashboard.dart - UPDATED WITH REVIEWS + REVIEW ANALYTICS
+// lib/screens/admin_dashboard.dart - COMPLETE WITH REVIEW ANALYTICS
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +8,7 @@ import '../providers/theme_provider.dart';
 
 import 'analytics_dashboard_screen.dart';
 import 'admin_reviews_dashboard.dart';
-import 'admin_review_analytics.dart'; // ✅ ADDED
+import 'admin_review_analytics.dart';
 import 'login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -156,7 +156,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 _buildDashboardCard(
                   'Analytics',
-                  'View system-wide metrics',
+                  'View system metrics',
                   Icons.analytics,
                   const Color(0xFF2196F3),
                   () {
@@ -168,10 +168,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     );
                   },
                 ),
-
                 _buildDashboardCard(
                   'Reviews',
-                  'Moderate user reviews',
+                  'Moderate reviews',
                   Icons.rate_review,
                   const Color(0xFFFF6B6B),
                   () {
@@ -183,13 +182,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     );
                   },
                 ),
-
-                // ✅ NEW CARD: REVIEW ANALYTICS
                 _buildDashboardCard(
                   'Review Analytics',
                   'View review stats',
-                  Icons.rate_review,
-                  Colors.purple,
+                  Icons.bar_chart,
+                  const Color(0xFF9C27B0),
                   () {
                     Navigator.push(
                       context,
@@ -197,6 +194,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         builder: (_) => const AdminReviewAnalytics(),
                       ),
                     );
+                  },
+                ),
+                _buildDashboardCard(
+                  'System Info',
+                  'View details',
+                  Icons.info_outline,
+                  const Color(0xFF4CAF50),
+                  () {
+                    _showSystemInfo();
                   },
                 ),
               ],
@@ -255,6 +261,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE0E0E0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -289,6 +302,69 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showSystemInfo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.info_outline, color: Color(0xFF2196F3)),
+            SizedBox(width: 12),
+            Text('System Information'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Admin User', _currentUser?.name ?? 'Unknown'),
+            const Divider(height: 20),
+            _buildInfoRow('Email', _currentUser?.email ?? 'Unknown'),
+            const Divider(height: 20),
+            _buildInfoRow('Phone', _currentUser?.phone ?? 'Unknown'),
+            const Divider(height: 20),
+            _buildInfoRow('Role', 'Administrator'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,11 +1,15 @@
 // lib/services/review_service.dart - User review service
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 import '../config/api_config.dart';
 import 'auth_service.dart';
+import 'notification_service.dart'; // ✅ ADDED
 
 class ReviewService {
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService =
+      NotificationService(); // ✅ ADDED
 
   Future<Map<String, dynamic>> checkEligibility(String orderId) async {
     try {
@@ -27,6 +31,7 @@ class ReviewService {
     }
   }
 
+  // ✅ REPLACED submitReview METHOD WITH NOTIFICATION INTEGRATION
   Future<Map<String, dynamic>> submitReview({
     required String orderId,
     required String emojiSentiment,
@@ -57,9 +62,21 @@ class ReviewService {
       );
 
       if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        final coinsEarned = data['review']?['coins_rewarded'] ?? 0;
+
+        await _notificationService.addNotification(
+          title: 'Review Submitted! 🎉',
+          message:
+              'Thank you for your feedback! You earned $coinsEarned coins.',
+          orderId: orderId,
+          coinsEarned: coinsEarned,
+        );
+
         return {
           'success': true,
-          'data': jsonDecode(response.body),
+          'data': data,
         };
       }
 
@@ -148,7 +165,9 @@ class ReviewService {
       );
 
       if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+        return List<Map<String, dynamic>>.from(
+          jsonDecode(response.body),
+        );
       }
 
       return [];

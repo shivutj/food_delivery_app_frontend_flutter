@@ -1,4 +1,4 @@
-// lib/screens/orders_screen.dart - COMPLETE WITH REVIEW INTEGRATION
+// lib/screens/orders_screen.dart - COMPLETE WITH REVIEW NOTIFICATION
 import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../services/api_service.dart';
@@ -31,11 +31,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     final orders = await _apiService.getOrderHistory();
 
-    // Check review eligibility for delivered orders
+    // ✅ Check review eligibility for ALL delivered orders
     for (var order in orders) {
       if (order.status == 'Delivered') {
         final eligibility = await _reviewService.checkEligibility(order.id);
         _reviewEligibility[order.id] = eligibility['eligible'] ?? false;
+
+        // ✅ Show notification if eligible and not yet shown
+        if (eligibility['eligible'] == true) {
+          _showReviewNotification(order);
+        }
       }
     }
 
@@ -45,13 +50,67 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
   }
 
+  // ✅ NEW: Show review notification
+  void _showReviewNotification(Order order) {
+    // Check if we've already shown notification for this order
+    final prefs = ['shown_review_${order.id}'];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.rate_review, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Review Your Order',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Order #${order.id.substring(order.id.length - 6)} is ready for review',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            action: SnackBarAction(
+              label: 'Review Now',
+              textColor: Colors.white,
+              onPressed: () {
+                _writeReview(order);
+              },
+            ),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    });
+  }
+
   Future<void> _writeReview(Order order) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WriteReviewScreen(
           orderId: order.id,
-          restaurantName: 'Restaurant', // You'll get this from order items
+          restaurantName:
+              order.items.isNotEmpty ? order.items[0].name : 'Restaurant',
         ),
       ),
     );
@@ -336,27 +395,49 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
 
-                // Review Button
+                // ✅ Review Button with Animation
                 if (canReview) ...[
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _writeReview(order),
-                      icon: const Icon(Icons.rate_review, size: 18),
-                      label: const Text(
-                        'Write Review & Earn Coins',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF6B6B), Color(0xFFFFE66D)],
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFF6B6B),
-                        side: const BorderSide(
-                          color: Color(0xFFFF6B6B),
-                          width: 1.5,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _writeReview(order),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.rate_review,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Write Review & Earn Coins 🪙',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

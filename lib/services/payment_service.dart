@@ -1,12 +1,15 @@
-// lib/services/payment_service.dart - NEW FILE
+// lib/services/payment_service.dart - COMPLETE REPLACEMENT
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import 'auth_service.dart';
+import 'notification_service.dart'; // ✅ ADD THIS
 
 class PaymentService {
   final String baseUrl = ApiConfig.baseUrl;
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService =
+      NotificationService(); // ✅ ADD THIS
 
   // Process payment and create order
   Future<Map<String, dynamic>> processPayment({
@@ -16,7 +19,7 @@ class PaymentService {
   }) async {
     try {
       final token = await _authService.getToken();
-      
+
       // Step 1: Initiate payment
       final paymentResponse = await http.post(
         Uri.parse('$baseUrl/payments/initiate'),
@@ -55,16 +58,32 @@ class PaymentService {
       );
 
       if (orderResponse.statusCode == 201) {
+        final orderId = jsonDecode(orderResponse.body)['order']['_id'];
+
+        // ✅ ADD NOTIFICATION AFTER SUCCESSFUL ORDER
+        String restaurantName = 'Restaurant';
+        if (items.isNotEmpty && items[0]['name'] != null) {
+          restaurantName = items[0]['restaurantName'] ?? 'Restaurant';
+        }
+
+        await _notificationService.addNotification(
+          title: 'Order Placed Successfully! 🎉',
+          message:
+              'Your order from $restaurantName has been placed. Track it in order history.',
+          orderId: orderId,
+          restaurantName: restaurantName,
+        );
+
         return {
           'success': true,
-          'orderId': jsonDecode(orderResponse.body)['order']['_id'],
+          'orderId': orderId,
           'transactionId': transactionId,
         };
       }
 
       // Rollback payment if order creation fails
       await _rollbackPayment(transactionId);
-      
+
       return {
         'success': false,
         'message': 'Order creation failed',
