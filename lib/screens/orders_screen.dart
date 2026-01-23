@@ -1,5 +1,6 @@
-// lib/screens/orders_screen.dart - COMPLETE WITH REVIEW NOTIFICATION
+// lib/screens/orders_screen.dart - COMPLETE WITH POLLING
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/order.dart';
 import '../services/api_service.dart';
 import '../services/review_service.dart';
@@ -19,11 +20,53 @@ class _OrdersScreenState extends State<OrdersScreen> {
   List<Order> _orders = [];
   bool _isLoading = true;
   Map<String, bool> _reviewEligibility = {};
+  Timer? _pollTimer;
+  Set<String> _notifiedOrders = {};
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        _checkForNewDeliveries();
+      }
+    });
+  }
+
+  Future<void> _checkForNewDeliveries() async {
+    final orders = await _apiService.getOrderHistory();
+
+    for (var order in orders) {
+      if (order.status == 'Delivered' &&
+          !order.reviewed &&
+          !_notifiedOrders.contains(order.id)) {
+        final oldOrder = _orders.firstWhere(
+          (o) => o.id == order.id,
+          orElse: () => order,
+        );
+
+        if (oldOrder.status != 'Delivered') {
+          await Future.delayed(const Duration(seconds: 1));
+
+          final eligibility = await _reviewService.checkEligibility(order.id);
+          if (eligibility['eligible'] == true) {
+            _notifiedOrders.add(order.id);
+            _showReviewNotification(order);
+          }
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _orders = orders;
+      });
+    }
   }
 
   Future<void> _loadOrders() async {
@@ -35,10 +78,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       if (order.status == 'Delivered' && !order.reviewed) {
         final eligibility = await _reviewService.checkEligibility(order.id);
         _reviewEligibility[order.id] = eligibility['eligible'] ?? false;
-
-        if (eligibility['eligible'] == true) {
-          _showReviewNotification(order);
-        }
       }
     }
 
@@ -48,8 +87,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
   }
 
-  // ✅ NEW: Show review notification
   void _showReviewNotification(Order order) {
+    if (!mounted) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,7 +140,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _writeReview(Order order) async {
-    // Dismiss any existing snackbars first
     ScaffoldMessenger.of(context).clearSnackBars();
 
     final result = await Navigator.push(
@@ -114,7 +153,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
 
     if (result == true) {
-      _loadOrders(); // Reload to update eligibility
+      _loadOrders();
       _showMessage('Thank you for your review! 🎉', Colors.green);
     }
   }
@@ -198,8 +237,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F5F5),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -244,7 +283,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -276,7 +314,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        dateFormat.format(order.createdAt),
+                        dateFormat.format(order.createdAt.toLocal()),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,
@@ -307,10 +345,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ],
             ),
           ),
-
           const Divider(height: 1),
-
-          // Items
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -361,7 +396,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   );
                 }).toList(),
-
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -392,8 +426,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ],
                   ),
                 ),
-
-                // ✅ Review Button with Animation
                 if (canReview) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -447,5 +479,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 }

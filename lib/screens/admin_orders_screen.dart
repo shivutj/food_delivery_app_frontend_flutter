@@ -33,7 +33,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     try {
       final orders = await _apiService.getAllOrders();
       print('✅ Received ${orders.length} orders');
-      
+
       setState(() {
         _orders = orders;
         _isLoading = false;
@@ -63,7 +63,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
     try {
       final success = await _apiService.updateOrderStatus(orderId, newStatus);
-      
+
       // Close loading dialog
       if (mounted) Navigator.pop(context);
 
@@ -90,7 +90,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     } catch (e) {
       print('❌ Error updating order: $e');
       if (mounted) Navigator.pop(context);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -238,11 +238,15 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.access_time,
+                      size: 14, color: Colors.grey.shade600),
                   const SizedBox(width: 4),
                   Text(
-                    dateFormat.format(order.createdAt),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    dateFormat.format(order.createdAt.toLocal()),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -388,9 +392,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     final color = _getStatusColor(status);
 
     return ElevatedButton(
-      onPressed: isCurrentStatus
-          ? null
-          : () => _updateOrderStatus(order.id, status),
+      onPressed:
+          isCurrentStatus ? null : () => _updateOrderStatus(order.id, status),
       style: ElevatedButton.styleFrom(
         backgroundColor: isCurrentStatus ? Colors.grey : color,
         foregroundColor: Colors.white,

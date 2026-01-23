@@ -1,4 +1,4 @@
-// lib/widgets/review_notification_dialog.dart - REVIEW POPUP
+// lib/widgets/review_notification_dialog.dart - FIXED POPUP DISMISSAL
 import 'package:flutter/material.dart';
 import '../screens/write_review_screen.dart';
 
@@ -6,12 +6,14 @@ class ReviewNotificationDialog extends StatelessWidget {
   final String orderId;
   final String restaurantName;
   final int coinsReward;
+  final VoidCallback? onReviewComplete;
 
   const ReviewNotificationDialog({
     super.key,
     required this.orderId,
     required this.restaurantName,
-    this.coinsReward = 50, // Average reward
+    this.coinsReward = 50,
+    this.onReviewComplete,
   });
 
   @override
@@ -132,7 +134,8 @@ class ReviewNotificationDialog extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                  Icon(Icons.info_outline,
+                      color: Colors.blue.shade700, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -154,7 +157,10 @@ class ReviewNotificationDialog extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      // ✅ FIXED: Properly dismiss the dialog
+                      Navigator.of(context).pop();
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: BorderSide(color: Colors.grey.shade300, width: 2),
@@ -176,9 +182,11 @@ class ReviewNotificationDialog extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
+                    onPressed: () async {
+                      // ✅ FIXED: Close dialog first, then navigate
+                      Navigator.of(context).pop();
+
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => WriteReviewScreen(
@@ -187,6 +195,11 @@ class ReviewNotificationDialog extends StatelessWidget {
                           ),
                         ),
                       );
+
+                      // ✅ Call callback if review was completed
+                      if (result == true && onReviewComplete != null) {
+                        onReviewComplete!();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -213,7 +226,10 @@ class ReviewNotificationDialog extends StatelessWidget {
 
             // Dismiss
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                // ✅ FIXED: Properly dismiss the dialog
+                Navigator.of(context).pop();
+              },
               child: Text(
                 'Maybe next time',
                 style: TextStyle(
@@ -228,19 +244,22 @@ class ReviewNotificationDialog extends StatelessWidget {
     );
   }
 
+  // ✅ FIXED: Proper show method with callback support
   static void show(
     BuildContext context, {
     required String orderId,
     required String restaurantName,
     int coinsReward = 50,
+    VoidCallback? onReviewComplete,
   }) {
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: true, // ✅ Allow dismissal by tapping outside
       builder: (context) => ReviewNotificationDialog(
         orderId: orderId,
         restaurantName: restaurantName,
         coinsReward: coinsReward,
+        onReviewComplete: onReviewComplete,
       ),
     );
   }

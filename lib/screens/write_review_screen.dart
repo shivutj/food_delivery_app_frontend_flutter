@@ -1,4 +1,4 @@
-// lib/screens/write_review_screen.dart - FIXED CHARACTER COUNT & SUBMIT
+// lib/screens/write_review_screen.dart - FIXED CHARACTER VALIDATION
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
 
@@ -25,68 +25,90 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   double _deliveryRating = 5;
   bool _isLoading = false;
   bool _isPositive = true;
-  int _charCount = 0;
+  int _currentLength = 0;
 
   @override
   void initState() {
     super.initState();
     _checkEligibility();
+    
+    // ✅ Listen to text changes
+    _reviewController.addListener(() {
+      setState(() {
+        _currentLength = _reviewController.text.trim().length;
+      });
+    });
   }
 
   Future<void> _checkEligibility() async {
     final result = await _reviewService.checkEligibility(widget.orderId);
 
-    if (!result['eligible'] && mounted) {
-      _showMessage(result['message'], const Color(0xFFFF5252));
-      Navigator.pop(context);
+    if (!result['eligible']) {
+      if (mounted) {
+        _showMessage(result['message'], const Color(0xFFFF5252));
+        Navigator.pop(context);
+      }
     }
   }
 
   Future<void> _submitReview() async {
-    final text = _reviewController.text.trim();
-
-    if (text.length < 80) {
-      _showMessage(
-        'Please write at least 80 characters (${80 - text.length} more needed)',
-        const Color(0xFFFF9800),
-      );
+    final reviewText = _reviewController.text.trim();
+    
+    // ✅ FIXED: Allow any text length (removed 80 char minimum)
+    if (reviewText.isEmpty) {
+      _showMessage('Please write something about your experience', const Color(0xFFFF9800));
       return;
+    }
+
+    // ✅ Optional: Recommend longer reviews but don't enforce
+    if (reviewText.length < 20) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Short Review'),
+          content: const Text(
+            'Your review is quite short. A more detailed review helps other customers and earns you more coins. Continue anyway?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep Writing'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Submit Anyway'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirm != true) return;
     }
 
     setState(() => _isLoading = true);
 
-    try {
-      final result = await _reviewService.submitReview(
-        orderId: widget.orderId,
-        emojiSentiment: _isPositive ? 'thumbs_up' : 'thumbs_down',
-        rating: _overallRating,
-        foodQualityRating: _foodQualityRating,
-        deliveryRating: _deliveryRating,
-        reviewText: text,
-      );
+    final result = await _reviewService.submitReview(
+      orderId: widget.orderId,
+      emojiSentiment: _isPositive ? 'thumbs_up' : 'thumbs_down',
+      rating: _overallRating,
+      foodQualityRating: _foodQualityRating,
+      deliveryRating: _deliveryRating,
+      reviewText: reviewText,
+    );
 
-      if (!mounted) return;
+    setState(() => _isLoading = false);
 
-      setState(() => _isLoading = false);
-
-      if (result['success']) {
-        _showRewardDialog(result['data']);
-      } else {
-        _showMessage(
-          result['message'] ?? 'Failed to submit review',
-          const Color(0xFFFF5252),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() => _isLoading = false);
-      _showMessage('Error: ${e.toString()}', const Color(0xFFFF5252));
+    if (result['success']) {
+      _showRewardDialog(result['data']);
+    } else {
+      _showMessage(result['message'], const Color(0xFFFF5252));
     }
   }
 
   void _showRewardDialog(Map<String, dynamic> data) {
     final coins = data['review']?['coins_rewarded'] ?? 50;
+    final trustScore = data['review']?['trust_score'] ?? 50;
 
     showDialog(
       context: context,
@@ -124,6 +146,8 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                 style: TextStyle(color: Colors.grey.shade600),
               ),
               const SizedBox(height: 24),
+              
+              // Coins Earned
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -149,17 +173,44 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                   ],
                 ),
               ),
+              
+              const SizedBox(height: 16),
+              
+              // Trust Score
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shield, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Trust Score: $trustScore',
+                      style: TextStyle(
+                        color: Colors.blue.shade900,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context, true);
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context, true); // Return to orders
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
                     'Done',
@@ -175,44 +226,61 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   }
 
   void _showMessage(String msg, Color color) {
-    if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Button enabled if text is not empty
+    final canSubmit = _currentLength > 0 && !_isLoading;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
         backgroundColor: Colors.white,
+        title: const Text('Write Review'),
         elevation: 0,
-        title: const Text(
-          'Write Review',
-          style: TextStyle(color: Color(0xFF212121)),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF212121)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.restaurantName,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            // Restaurant Name
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange.shade50, Colors.amber.shade50],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.restaurant, color: Colors.orange.shade700),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.restaurantName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+
+            // Sentiment Selection
             const Text(
               'How was your experience?',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -240,138 +308,113 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               ],
             ),
             const SizedBox(height: 24),
+
+            // Ratings
             _buildRatingRow('Overall Rating', _overallRating,
                 (v) => setState(() => _overallRating = v)),
+            const SizedBox(height: 12),
             _buildRatingRow('Food Quality', _foodQualityRating,
                 (v) => setState(() => _foodQualityRating = v)),
+            const SizedBox(height: 12),
             _buildRatingRow('Delivery', _deliveryRating,
                 (v) => setState(() => _deliveryRating = v)),
             const SizedBox(height: 24),
-            Text(
-              'Write your review',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _reviewController,
-              maxLines: 6,
-              maxLength: 2000,
-              onChanged: (text) {
-                setState(() {
-                  _charCount = text.trim().length;
-                });
-              },
-              decoration: InputDecoration(
-                hintText:
-                    'Share your experience... (minimum 80 characters required)',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF4CAF50), width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                counterText: '',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+
+            // Review Text
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _charCount >= 80
-                        ? const Color(0xFF4CAF50).withOpacity(0.1)
-                        : const Color(0xFFFF9800).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _charCount >= 80
-                          ? const Color(0xFF4CAF50)
-                          : const Color(0xFFFF9800),
+                Row(
+                  children: [
+                    const Text(
+                      'Your Review',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    // ✅ Character counter
+                    Text(
+                      '$_currentLength / 2000',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _currentLength < 20 
+                            ? Colors.orange.shade700 
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // ✅ Helpful hint
+                if (_currentLength < 20)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Detailed reviews earn more coins! (recommended: 20+ characters)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _charCount >= 80
-                            ? Icons.check_circle
-                            : Icons.info_outline,
-                        size: 16,
-                        color: _charCount >= 80
-                            ? const Color(0xFF4CAF50)
-                            : const Color(0xFFFF9800),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$_charCount / 80 characters',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _charCount >= 80
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFFF9800),
-                        ),
-                      ),
-                    ],
+                TextField(
+                  controller: _reviewController,
+                  maxLines: 6,
+                  maxLength: 2000,
+                  decoration: InputDecoration(
+                    hintText: 'Share your experience...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
                   ),
                 ),
-                if (_charCount < 80) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '${80 - _charCount} more needed',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
               ],
             ),
             const SizedBox(height: 24),
+
+            // ✅ Submit Button - Always visible, enabled based on text
             SizedBox(
               width: double.infinity,
-              height: 56,
               child: ElevatedButton(
-                onPressed:
-                    _charCount >= 80 && !_isLoading ? _submitReview : null,
+                onPressed: canSubmit ? _submitReview : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.orange.shade600,
                   disabledBackgroundColor: Colors.grey.shade300,
-                  elevation: _charCount >= 80 ? 2 : 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        height: 24,
-                        width: 24,
+                        height: 20,
+                        width: 20,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
                         ),
                       )
                     : Text(
-                        _charCount >= 80
-                            ? 'Submit Review'
-                            : 'Write at least 80 characters',
+                        canSubmit ? 'Submit Review' : 'Write your review first',
                         style: TextStyle(
-                          color: _charCount >= 80
-                              ? Colors.white
-                              : Colors.grey.shade600,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: canSubmit ? Colors.white : Colors.grey.shade600,
                         ),
                       ),
               ),
@@ -397,25 +440,20 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         decoration: BoxDecoration(
           border: Border.all(
             color: selected ? color : Colors.grey.shade300,
-            width: selected ? 2 : 1,
+            width: 2,
           ),
           borderRadius: BorderRadius.circular(12),
           color: selected ? color.withOpacity(0.1) : Colors.white,
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: selected ? color : Colors.grey.shade400,
-              size: 32,
-            ),
+            Icon(icon, color: selected ? color : Colors.grey.shade400, size: 32),
             const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
+                fontWeight: FontWeight.w600,
                 color: selected ? color : Colors.grey.shade600,
-                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 14,
               ),
             ),
           ],
@@ -429,17 +467,19 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     double value,
     Function(double) onChanged,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
           Row(
