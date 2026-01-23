@@ -1,4 +1,4 @@
-// lib/screens/write_review_screen.dart - LIGHTWEIGHT WITH COINS
+// lib/screens/write_review_screen.dart - FIXED LOADING STATE
 import 'package:flutter/material.dart';
 import '../services/review_service.dart';
 
@@ -24,7 +24,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   double _foodQualityRating = 5;
   double _deliveryRating = 5;
   bool _isLoading = false;
-  bool _isPositive = true; // Thumbs up/down
+  bool _isPositive = true;
 
   @override
   void initState() {
@@ -35,11 +35,9 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   Future<void> _checkEligibility() async {
     final result = await _reviewService.checkEligibility(widget.orderId);
 
-    if (!result['eligible']) {
-      if (mounted) {
-        _showMessage(result['message'], const Color(0xFFFF5252));
-        Navigator.pop(context);
-      }
+    if (!result['eligible'] && mounted) {
+      _showMessage(result['message'], const Color(0xFFFF5252));
+      Navigator.pop(context);
     }
   }
 
@@ -54,26 +52,41 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
     setState(() => _isLoading = true);
 
-    final result = await _reviewService.submitReview(
-      orderId: widget.orderId,
-      emojiSentiment: _isPositive ? 'thumbs_up' : 'thumbs_down', // ✅ FIX
-      rating: _overallRating,
-      foodQualityRating: _foodQualityRating,
-      deliveryRating: _deliveryRating,
-      reviewText: _reviewController.text.trim(),
-    );
+    try {
+      final result = await _reviewService.submitReview(
+        orderId: widget.orderId,
+        emojiSentiment: _isPositive ? 'thumbs_up' : 'thumbs_down',
+        rating: _overallRating,
+        foodQualityRating: _foodQualityRating,
+        deliveryRating: _deliveryRating,
+        reviewText: _reviewController.text.trim(),
+      );
 
-    setState(() => _isLoading = false);
+      // ✅ ALWAYS RESET LOADING STATE
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
 
-    if (result['success']) {
-      _showRewardDialog(result['data']);
-    } else {
-      _showMessage(result['message'], const Color(0xFFFF5252));
+      if (result['success']) {
+        if (mounted) {
+          _showRewardDialog(result['data']);
+        }
+      } else {
+        if (mounted) {
+          _showMessage(result['message'], const Color(0xFFFF5252));
+        }
+      }
+    } catch (e) {
+      // ✅ ENSURE LOADING STOPS EVEN ON ERROR
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showMessage('Error: ${e.toString()}', const Color(0xFFFF5252));
+      }
     }
   }
 
   void _showRewardDialog(Map<String, dynamic> data) {
-    final coins = (data['review']['trust_score'] ?? 50) ~/ 2;
+    final coins = data['review']?['coins_rewarded'] ?? 50;
 
     showDialog(
       context: context,
@@ -147,7 +160,10 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                   ),
-                  child: const Text('Done'),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -158,6 +174,8 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   }
 
   void _showMessage(String msg, Color color) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -230,13 +248,31 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _reviewController.text.length >= 80 && !_isLoading
                     ? _submitReview
                     : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                ),
                 child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Submit Review'),
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Submit Review',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -265,7 +301,14 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         child: Column(
           children: [
             Icon(icon, color: selected ? color : Colors.grey),
-            Text(label),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? color : Colors.grey,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
           ],
         ),
       ),
@@ -277,21 +320,30 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     double value,
     Function(double) onChanged,
   ) {
-    return Row(
-      children: [
-        Expanded(child: Text(label)),
-        Row(
-          children: List.generate(5, (i) {
-            return GestureDetector(
-              onTap: () => onChanged((i + 1).toDouble()),
-              child: Icon(
-                i < value ? Icons.star : Icons.star_border,
-                color: const Color(0xFFFFA000),
-              ),
-            );
-          }),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ),
+          Row(
+            children: List.generate(5, (i) {
+              return GestureDetector(
+                onTap: () => onChanged((i + 1).toDouble()),
+                child: Icon(
+                  i < value ? Icons.star : Icons.star_border,
+                  color: const Color(0xFFFFA000),
+                  size: 28,
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 

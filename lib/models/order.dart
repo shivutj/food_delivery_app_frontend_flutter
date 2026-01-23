@@ -1,4 +1,4 @@
-// lib/models/order.dart
+// lib/models/order.dart - WITH REVIEWED FIELD
 class Order {
   final String id;
   final String userId;
@@ -6,6 +6,7 @@ class Order {
   final double total;
   final String status;
   final DateTime createdAt;
+  final bool reviewed;
 
   Order({
     required this.id,
@@ -14,6 +15,7 @@ class Order {
     required this.total,
     required this.status,
     required this.createdAt,
+    this.reviewed = false,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -26,7 +28,9 @@ class Order {
           [],
       total: (json['total'] ?? 0).toDouble(),
       status: json['status'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      reviewed: json['reviewed'] ?? false,
     );
   }
 }
